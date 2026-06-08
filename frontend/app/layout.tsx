@@ -38,9 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SuiClientProvider networks={networks} defaultNetwork="testnet">
             <WalletProvider>
               <div className="min-h-screen bg-background">
-                <Navbar />
-                <main>{children}</main>
-              </div>
+              <Navbar />
+<main>{children}</main>
+<div className="fixed bottom-4 right-4 z-50 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-full text-yellow-400 font-mono text-xs">
+  ⚠️ Testnet — Experimental Software
+</div>
               <Toaster
                 position="bottom-right"
                 toastOptions={{

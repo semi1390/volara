@@ -288,7 +288,7 @@ export default function LandingPage() {
         <h2 className="font-syne font-bold text-2xl md:text-4xl text-white mb-8 md:mb-12">Why Volara?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {[
-            { icon: <Brain className="text-primary" size={24} />, title: 'AI Powered Pricing', desc: 'Volara AI-generated fair value estimates and probability analysis on every trade. Know your risk before you trade.' },
+            { icon: <Brain className="text-primary" size={24} />, title: 'AI-Assisted Analysi', desc: 'Volara AI interprets risk, estimates profit probability, and explains every trade in plain English. Black-Scholes powers the math.',},
             { icon: <Zap className="text-profit" size={24} />, title: 'Instant Settlement', desc: "Sui's sub-second finality means options settle the moment they expire. No waiting, no custodians." },
             { icon: <TrendingUp className="text-primary" size={24} />, title: 'Deep Liquidity', desc: 'Competitive premiums from deep liquidity pools and professional market makers incentivized by protocol fees.' },
           ].map((feature) => (

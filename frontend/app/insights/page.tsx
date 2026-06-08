@@ -45,9 +45,13 @@ export default function InsightsPage() {
           <h1 className="font-syne font-extrabold text-4xl md:text-5xl text-white">AI Insights</h1>
           <span className="px-2 py-1 rounded-full bg-primary text-white text-xs font-mono font-bold flex-shrink-0">VOLARA</span>
         </div>
-        <p className="text-text-secondary font-mono text-sm md:text-base mb-8 md:mb-10">
-          Get AI-powered options analysis from Volara AI. Enter your trade parameters below.
-        </p>
+       <p className="text-text-secondary font-mono text-sm md:text-base mb-4">
+  Get AI-powered options analysis from Volara AI. Enter your trade parameters below.
+</p>
+<p className="flex items-center gap-2 text-yellow-400/70 font-mono text-xs mb-8 md:mb-10 bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-4 py-2.5">
+  <span>⚠️</span>
+  AI insights are informational only and not investment advice. Always do your own research.
+</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {/* Input Form */}
