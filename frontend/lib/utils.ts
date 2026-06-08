@@ -45,27 +45,50 @@ export function getTimeUntilExpiry(targetDate: Date): { days: number; hours: num
   return { days, hours, minutes, seconds }
 }
 
+// Dynamic premium multiplier based on pool utilization
+// Matches on-chain MAX_UTILIZATION_BPS = 7000 (70%)
+export function getUtilizationMultiplier(utilizationPct: number): number {
+  if (utilizationPct < 40) return 1.0   // Normal pricing
+  if (utilizationPct < 60) return 1.25  // 25% premium increase
+  if (utilizationPct < 70) return 1.5   // 50% premium increase
+  if (utilizationPct < 80) return 2.0   // 100% premium increase
+  return 2.5                            // 150% premium increase — pool stressed
+}
+
+export function getUtilizationWarning(utilizationPct: number): string | null {
+  if (utilizationPct < 40) return null
+  if (utilizationPct < 60) return 'Pool utilization elevated — premium increased 25%'
+  if (utilizationPct < 70) return 'Pool utilization high — premium increased 50%'
+  if (utilizationPct >= 70) return '⚠️ Pool near capacity — premium doubled. Consider waiting.'
+  return null
+}
+
 export function calculatePremium(
   type: 'CALL' | 'PUT',
   strike: number,
   currentPrice: number,
   daysToExpiry: number,
-  impliedVol: number = 0.68
+  impliedVol: number = 0.68,
+  poolUtilizationPct: number = 0 // 0-100
 ): number {
-  // Simplified Black-Scholes approximation
+  // Black-Scholes approximation
   const T = daysToExpiry / 365
   const sigma = impliedVol
-  const r = 0.05
   const S = currentPrice
   const K = strike
 
+  let basePremium: number
   if (type === 'CALL') {
     const intrinsic = Math.max(0, S - K)
     const timeValue = S * sigma * Math.sqrt(T) * 0.4
-    return +(intrinsic + timeValue).toFixed(4)
+    basePremium = intrinsic + timeValue
   } else {
     const intrinsic = Math.max(0, K - S)
     const timeValue = S * sigma * Math.sqrt(T) * 0.4
-    return +(intrinsic + timeValue).toFixed(4)
+    basePremium = intrinsic + timeValue
   }
+
+  // Apply utilization multiplier — higher utilization = more expensive options
+  const multiplier = getUtilizationMultiplier(poolUtilizationPct)
+  return +(basePremium * multiplier).toFixed(4)
 }
