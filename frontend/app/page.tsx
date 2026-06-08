@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePrices } from '@/hooks/usePrices'
 import { ArrowRight, Zap, TrendingUp, Brain, ChevronRight } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import { PLATFORM_STATS, MARKETS, SPARKLINE_DATA } from '@/lib/dummy-data'
 
 function AnimatedCounter({ value, prefix = '', suffix = '' }: { value: number; prefix?: string; suffix?: string }) {
@@ -95,6 +95,52 @@ function MarketCard({ market }: { market: typeof MARKETS[0] }) {
   )
 }
 
+function TerminalAnimation({ price }: { price: number }) {
+  const [visibleLines, setVisibleLines] = useState(0)
+
+  const lines = [
+    { text: '> Fetching SUI/USDC options...', color: 'text-text-secondary' },
+    { text: `✓ Mark Price: $${price > 0 ? price.toFixed(3) : '0.737'}`, color: 'text-profit' },
+    { text: '> Running AI pricing model...', color: 'text-text-secondary' },
+    { text: '💡 CALL $0.80 — 34% chance of profit', color: 'text-primary' },
+    { text: '> Breakeven: $0.76', color: 'text-text-secondary' },
+    { text: '> Risk level: Medium', color: 'text-text-secondary' },
+    { text: '> IV: 68.4%', color: 'text-text-secondary' },
+  ]
+
+  useEffect(() => {
+    setVisibleLines(0)
+    const timer = setInterval(() => {
+      setVisibleLines(prev => {
+        if (prev >= lines.length) {
+          clearInterval(timer)
+          return prev
+        }
+        return prev + 1
+      })
+    }, 600)
+    return () => clearInterval(timer)
+  }, [price])
+
+  return (
+    <div className="space-y-2 font-mono text-sm min-h-[200px]">
+      {lines.slice(0, visibleLines).map((line, i) => (
+        <div key={i} className={cn(line.color, 'transition-all')}>
+          {line.text}
+          {i === visibleLines - 1 && visibleLines < lines.length && (
+            <span className="animate-pulse ml-1">|</span>
+          )}
+        </div>
+      ))}
+      {visibleLines >= lines.length && (
+        <div className="mt-4 p-3 rounded-lg bg-profit/10 border border-profit/20">
+          <div className="text-profit font-bold">Position P&L: +$0.042 (+12.3%)</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LandingPage() {
   const { prices } = usePrices()
 
@@ -120,19 +166,14 @@ export default function LandingPage() {
               <div className="w-1.5 h-1.5 rounded-full bg-primary status-pulse" />
               Live on Sui Testnet
             </div>
-
-            {/* Heading: smaller on mobile to prevent overflow */}
             <h1 className="font-syne font-extrabold text-4xl md:text-7xl leading-none mb-4 md:mb-6">
               <span className="gradient-text">Hedge smarter.</span>
               <br />
               <span className="text-white">Trade better.</span>
             </h1>
-
             <p className="text-text-secondary text-base md:text-lg font-mono leading-relaxed mb-8 md:mb-10 max-w-lg">
               Decentralized options on Sui with AI-powered pricing, instant settlement, and institutional-grade liquidity.
             </p>
-
-            {/* CTA buttons: stack on mobile, row on sm+ */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8 md:mb-12">
               <Link href="/trade" className="w-full sm:w-auto">
                 <button className="w-full px-8 py-3.5 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo hover:bg-primary/90 transition-all flex items-center justify-center gap-2">
@@ -145,8 +186,6 @@ export default function LandingPage() {
                 </button>
               </Link>
             </div>
-
-            {/* Trust badges: wrap on mobile */}
             <div className="flex flex-wrap items-center gap-4 md:gap-6">
               {[
                 { label: 'Security Audited', icon: '🔒' },
@@ -161,9 +200,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Terminal visual
-              Mobile: shown but compact — hide the longer lines to keep it tight
-              Desktop: full version as before */}
+          {/* Terminal */}
           <div className="relative mt-4 md:mt-0">
             <div className="card p-4 md:p-6 relative">
               <div className="flex items-center gap-2 mb-3 md:mb-4">
@@ -172,19 +209,7 @@ export default function LandingPage() {
                 <div className="w-3 h-3 rounded-full bg-profit" />
                 <span className="ml-2 text-text-secondary text-xs font-mono">volara.terminal</span>
               </div>
-              <div className="space-y-2 md:space-y-3 font-mono text-xs md:text-sm">
-                <div className="text-text-secondary">{'>'} Fetching SUI/USDC options...</div>
-                <div className="text-profit">✓ Mark Price: ${prices.sui.price > 0 ? prices.sui.price.toFixed(3) : '0.737'} <span className="animate-pulse">|</span></div>
-                <div className="text-text-secondary">{'>'} Running AI pricing model...</div>
-                <div className="text-primary">💡 CALL $0.80 — 34% chance of profit</div>
-                {/* Hide less critical lines on mobile to keep card compact */}
-                <div className="hidden sm:block text-text-secondary">{'>'} Breakeven: <span className="text-white">$0.76</span></div>
-                <div className="hidden sm:block text-text-secondary">{'>'} Risk level: <span className="text-yellow-400">Medium</span></div>
-                <div className="text-text-secondary">{'>'} IV: <span className="text-white">68.4%</span></div>
-                <div className="mt-3 md:mt-4 p-2.5 md:p-3 rounded-lg bg-profit/10 border border-profit/20">
-                  <div className="text-profit font-bold text-xs md:text-sm">Position P&L: +$0.042 (+12.3%)</div>
-                </div>
-              </div>
+              <TerminalAnimation price={prices.sui.price} />
             </div>
             <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/20 rounded-full blur-2xl" />
             <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-profit/15 rounded-full blur-xl" />
@@ -239,7 +264,6 @@ export default function LandingPage() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
           <h2 className="font-syne font-bold text-2xl md:text-4xl text-center text-white mb-10 md:mb-16">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
-            {/* Connector line — desktop only */}
             <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
             {[
               { step: 1, title: 'Choose Option', desc: 'Select CALL or PUT options on your favorite Sui assets. Pick your strike price and expiry.', icon: '🎯' },
@@ -321,14 +345,8 @@ export default function LandingPage() {
         <div className="card p-8 md:p-16 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-profit/5" />
           <div className="relative z-10">
-            {/* Heading: capped at 3xl on mobile to stop overflow */}
-            <h2 className="font-syne font-extrabold text-3xl md:text-5xl text-white mb-3 md:mb-4">
-              Ready to trade smarter?
-            </h2>
-            <p className="text-text-secondary font-mono mb-8 md:mb-10 text-sm md:text-base">
-              Join thousands of traders hedging and speculating with Volara.
-            </p>
-            {/* Buttons: stack on mobile, row on sm+ */}
+            <h2 className="font-syne font-extrabold text-3xl md:text-5xl text-white mb-3 md:mb-4">Ready to trade smarter?</h2>
+            <p className="text-text-secondary font-mono mb-8 md:mb-10 text-sm md:text-base">Join thousands of traders hedging and speculating with Volara.</p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4">
               <Link href="/trade" className="w-full sm:w-auto">
                 <button className="w-full px-8 md:px-10 py-3.5 md:py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-base md:text-lg">
@@ -348,12 +366,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-white/5 py-10 md:py-12 bg-card/20">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-          {/*
-           * Mobile:  2-col grid — brand col spans full width, then 2 link cols per row
-           * Desktop: 5-col grid as before
-           */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-8 md:mb-10">
-            {/* Brand — full width on mobile */}
             <div className="col-span-2 md:col-span-2">
               <div className="flex items-center gap-2 mb-3 md:mb-4">
                 <Zap size={20} className="text-primary" />
@@ -365,8 +378,6 @@ export default function LandingPage() {
                 <span className="text-primary font-bold">⬡ Sui</span>
               </div>
             </div>
-
-            {/* Link columns — on mobile: 2 per row naturally from grid-cols-2 */}
             {[
               { title: 'Product', links: ['Markets', 'Trade', 'Liquidity', 'Portfolio', 'Settlement'] },
               { title: 'Resources', links: ['Documentation', 'Guides', 'API', 'Blog'] },
@@ -385,8 +396,6 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-
-          {/* Footer bottom: stack on mobile */}
           <div className="border-t border-white/5 pt-5 md:pt-6 flex flex-col sm:flex-row items-center sm:justify-between gap-3">
             <span className="text-text-secondary font-mono text-xs">© 2026 Volara. All rights reserved.</span>
             <div className="flex items-center gap-4">
