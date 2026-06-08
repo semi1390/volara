@@ -63,37 +63,37 @@ async function sendTelegram(msg) {
 // This prevents centralized price manipulation at settlement time
 async function getSuiPrice() {
   try {
-    const { SuiPriceServiceConnection } = require('@pythnetwork/pyth-sui-js')
-    const connection = new SuiPriceServiceConnection(
-      PYTH_ENDPOINT,
-      { priceFeedRequestConfig: { binary: true } }
-    )
+    const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
+    const url = `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${SUI_USD_FEED}`
+    
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Pyth HTTP error: ${res.status}`)
+    
+    const data = await res.json()
+    const parsed = data.parsed?.[0]
+    if (!parsed) throw new Error('No price data in Pyth response')
 
-    const feeds = await connection.getLatestPriceFeeds([SUI_USD_FEED])
-    if (!feeds || feeds.length === 0) throw new Error('No price feeds returned from Pyth')
-
-    const feed = feeds[0]
-    const price = feed.getPriceNoOlderThan(MAX_PRICE_AGE_SECONDS)
-    if (!price) throw new Error(`Price too stale — older than ${MAX_PRICE_AGE_SECONDS}s`)
-
-    // Validate confidence interval — reject if too wide (>2% of price)
+    const price = parsed.price
     const priceValue = parseFloat(price.price) * Math.pow(10, price.expo)
     const confidence = parseFloat(price.conf) * Math.pow(10, price.expo)
     const confidencePct = (confidence / priceValue) * 100
 
-    if (confidencePct > 2) {
-      throw new Error(`Pyth confidence too wide: ${confidencePct.toFixed(2)}% — market may be volatile`)
+    // Check price age
+    const priceAgeMs = Date.now() - (parsed.price.publish_time * 1000)
+    if (priceAgeMs > MAX_PRICE_AGE_SECONDS * 1000) {
+      throw new Error(`Price too stale: ${(priceAgeMs/1000).toFixed(0)}s old`)
     }
 
-    const priceTimestampMs = Date.now() // use current time as price was validated fresh
+    // Check confidence interval
+    if (confidencePct > 2) {
+      throw new Error(`Confidence too wide: ${confidencePct.toFixed(2)}%`)
+    }
 
-    log(`📡 Pyth SUI/USD: $${priceValue.toFixed(4)} (confidence: ±${confidencePct.toFixed(3)}%)`)
-    return { price: priceValue, timestampMs: priceTimestampMs }
+    log(`📡 Pyth SUI/USD: $${priceValue.toFixed(4)} (confidence: ±${confidencePct.toFixed(3)}%, age: ${(priceAgeMs/1000).toFixed(0)}s)`)
+    return { price: priceValue, timestampMs: Date.now() }
 
   } catch (e) {
-    // FAIL CLOSED — do not fall back to CoinGecko
-    // CoinGecko is centralized and can be manipulated at settlement time
-    log(`❌ Pyth oracle failed — settlement PAUSED this round: ${e.message}`)
+    log(`❌ Pyth oracle failed — settlement PAUSED: ${e.message}`)
     await sendTelegram(`🚨 *Volara Keeper — Oracle Failure*\n\nPyth price fetch failed:\n\`${e.message}\`\n\nSettlement paused this round. Will retry in 60s.`)
     return null
   }
