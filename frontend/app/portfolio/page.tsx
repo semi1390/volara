@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, X, ChevronRight } from 'lucide-react'
-import { PORTFOLIO_STATS } from '@/lib/dummy-data'
+import { Download, X, ChevronRight, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
@@ -10,6 +9,7 @@ import toast from 'react-hot-toast'
 import { useCurrentAccount } from '@mysten/dapp-kit'
 import { usePositions } from '@/hooks/usePositions'
 import { useTransactionHistory } from '@/hooks/useTransactionHistory'
+import Link from 'next/link'
 
 function StatCard({ label, value, sub, positive }: { label: string; value: string; sub?: string; positive?: boolean }) {
   return (
@@ -34,13 +34,15 @@ export default function PortfolioPage() {
   if (!account) {
     return (
       <div className="pt-24 min-h-screen flex items-center justify-center">
-        <div className="relative text-center px-4">
+        <div className="text-center px-4">
           <div className="text-6xl mb-6">🔗</div>
           <h2 className="font-syne font-bold text-3xl text-white mb-3">Connect your wallet</h2>
           <p className="text-text-secondary font-mono mb-8">to view portfolio analytics.</p>
-          <button className="px-10 py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-lg">
-            Connect Wallet
-          </button>
+          <Link href="/trade">
+            <button className="px-10 py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-lg">
+              Start Trading
+            </button>
+          </Link>
         </div>
       </div>
     )
@@ -53,7 +55,6 @@ export default function PortfolioPage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-8 md:mb-10 gap-4">
           <div className="min-w-0">
-            {/* Heading: smaller on mobile to prevent overflow */}
             <h1 className="font-syne font-extrabold text-4xl md:text-5xl text-white mb-2 md:mb-3">Portfolio</h1>
             <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
               <div className="w-2 h-2 rounded-full bg-profit status-pulse flex-shrink-0" />
@@ -66,7 +67,7 @@ export default function PortfolioPage() {
           </button>
         </div>
 
-        {/* Stats grid: 2×2 on mobile, 4-col on md+ */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
           <StatCard label="Portfolio Value" value={`${positions.reduce((sum, p) => sum + p.premium, 0).toFixed(4)} SUI`} />
           <StatCard label="Total Positions Ever" value={`${positions.length + 2}`} />
@@ -74,14 +75,14 @@ export default function PortfolioPage() {
           <StatCard label="Total Premiums Paid" value={positions.reduce((sum, p) => sum + p.premium, 0).toFixed(4) + ' SUI'} />
         </div>
 
-        {/* Main content: stacks on mobile, side-by-side on lg+ */}
+        {/* Main content */}
         <div className="flex flex-col lg:grid lg:grid-cols-[1fr_340px] gap-6 md:gap-8">
           <div>
-            {/* Tab bar: scrollable on mobile so all 3 tabs stay accessible */}
+            {/* Tabs */}
             <div className="mb-5 md:mb-6">
               <div className="flex gap-1 bg-card rounded-xl p-1 border border-white/5 w-full overflow-x-auto">
                 {[
-                  { key: 'active', label: 'Active' },
+                  { key: 'active', label: 'Active Positions' },
                   { key: 'expired', label: 'Expired' },
                   { key: 'transactions', label: 'Transactions' },
                 ].map(tab => (
@@ -99,9 +100,9 @@ export default function PortfolioPage() {
               </div>
             </div>
 
+            {/* Active Positions Tab */}
             {activeTab === 'active' && (
               <div className="card overflow-hidden">
-                {/* Table: horizontal scroll on mobile */}
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[600px]">
                     <thead>
@@ -113,9 +114,29 @@ export default function PortfolioPage() {
                     </thead>
                     <tbody>
                       {positionsLoading ? (
-                        <tr><td colSpan={9} className="px-4 py-8 text-center text-text-secondary font-mono text-sm">Loading positions...</td></tr>
+                        <>
+                          {[1, 2, 3].map(i => (
+                            <tr key={i} className="border-b border-white/5 animate-pulse">
+                              {Array(9).fill(0).map((_, j) => (
+                                <td key={j} className="px-4 py-3">
+                                  <div className="h-4 bg-white/10 rounded w-16" />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </>
                       ) : positions.length === 0 ? (
-                        <tr><td colSpan={9} className="px-4 py-8 text-center text-text-secondary font-mono text-sm">No active positions.</td></tr>
+                        <tr>
+                          <td colSpan={9} className="px-4 py-16 text-center">
+                            <div className="text-4xl mb-4">📊</div>
+                            <div className="text-text-secondary font-mono text-sm mb-4">No active positions yet.</div>
+                            <Link href="/trade">
+                              <button className="px-6 py-2.5 rounded-xl bg-primary text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
+                                Buy Your First Option →
+                              </button>
+                            </Link>
+                          </td>
+                        </tr>
                       ) : positions.map(pos => (
                         <tr
                           key={pos.id}
@@ -143,22 +164,43 @@ export default function PortfolioPage() {
               </div>
             )}
 
+            {/* Transactions Tab */}
             {activeTab === 'transactions' && (
               <div className="card overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[480px]">
+                  <table className="w-full min-w-[560px]">
                     <thead>
                       <tr className="border-b border-white/5">
-                        {['Date', 'Type', 'Market', 'Strike', 'Expiry', 'Qty', 'Amount'].map(h => (
+                        {['Date', 'Type', 'Market', 'Strike', 'Qty', 'Amount', 'Tx Hash'].map(h => (
                           <th key={h} className="px-3 md:px-4 py-3 text-left text-xs font-mono text-text-secondary whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {txLoading ? (
-                        <tr><td colSpan={7} className="px-4 py-8 text-center text-text-secondary font-mono text-sm">Loading transactions...</td></tr>
+                        <>
+                          {[1, 2, 3].map(i => (
+                            <tr key={i} className="border-b border-white/5 animate-pulse">
+                              {Array(7).fill(0).map((_, j) => (
+                                <td key={j} className="px-4 py-3">
+                                  <div className="h-4 bg-white/10 rounded w-16" />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </>
                       ) : transactions.length === 0 ? (
-                        <tr><td colSpan={7} className="px-4 py-8 text-center text-text-secondary font-mono text-sm">No transactions yet.</td></tr>
+                        <tr>
+                          <td colSpan={7} className="px-4 py-16 text-center">
+                            <div className="text-4xl mb-4">📝</div>
+                            <div className="text-text-secondary font-mono text-sm mb-4">No transactions yet.</div>
+                            <Link href="/trade">
+                              <button className="px-6 py-2.5 rounded-xl bg-primary text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
+                                Make Your First Trade →
+                              </button>
+                            </Link>
+                          </td>
+                        </tr>
                       ) : transactions.map(tx => (
                         <tr key={tx.digest} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                           <td className="px-3 md:px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">{tx.timestamp}</td>
@@ -166,9 +208,19 @@ export default function PortfolioPage() {
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
-                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
                           <td className={cn('px-3 md:px-4 py-3 font-mono text-sm font-bold whitespace-nowrap', tx.amount >= 0 ? 'text-profit' : 'text-danger')}>
                             {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(4)} SUI
+                          </td>
+                          <td className="px-3 md:px-4 py-3">
+                            <a
+                              href={`https://suiscan.xyz/testnet/tx/${tx.digest}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-primary font-mono text-xs hover:underline whitespace-nowrap"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {tx.digest.slice(0, 8)}... <ExternalLink size={10} />
+                            </a>
                           </td>
                         </tr>
                       ))}
@@ -178,20 +230,25 @@ export default function PortfolioPage() {
               </div>
             )}
 
+            {/* Expired Tab */}
             {activeTab === 'expired' && (
               <div className="text-center py-16">
                 <div className="text-4xl mb-4">📋</div>
-                <p className="text-text-secondary font-mono">No expired positions to show.</p>
+                <p className="text-text-secondary font-mono mb-4">No expired positions yet.</p>
+                <Link href="/settlement">
+                  <button className="px-6 py-2.5 rounded-xl border border-white/10 text-text-secondary font-mono text-sm hover:text-white hover:border-white/30 transition-all">
+                    View Settlement Page →
+                  </button>
+                </Link>
               </div>
             )}
           </div>
 
-          {/* Position detail panel: full width below table on mobile, sidebar on lg+ */}
-          {/* On mobile: only show when a position is selected (saves vertical space) */}
+          {/* Position Detail Panel */}
           <div className={cn(
             'card p-5 transition-all',
             selectedPosition ? 'opacity-100' : 'opacity-50',
-            !selectedPosition && 'hidden lg:block'   // hide empty panel on mobile
+            !selectedPosition && 'hidden lg:block'
           )}>
             {selectedPosition ? (
               <>
@@ -218,20 +275,33 @@ export default function PortfolioPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* View on Explorer */}
+                <a
+                  href={`https://suiscan.xyz/testnet/object/${selectedPosition.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-primary font-mono text-xs hover:underline mb-6"
+                >
+                  View on Suiscan <ExternalLink size={10} />
+                </a>
+
+                {/* Greeks */}
                 <div className="space-y-2 mb-6 text-xs font-mono">
-                  <div className="text-text-secondary mb-2">GREEKS (estimated)</div>
+                  <div className="text-text-secondary mb-2 font-semibold">GREEKS (estimated)</div>
                   {[
                     ['Delta', selectedPosition.type === 'CALL' ? '0.42' : '-0.38'],
                     ['Gamma', '0.18'],
                     ['Theta', '-0.032'],
                     ['Vega', '0.241'],
                   ].map(([g, v]) => (
-                    <div key={g} className="flex justify-between">
+                    <div key={g} className="flex justify-between p-2 rounded-lg bg-background/50">
                       <span className="text-text-secondary">{g}</span>
-                      <span className="text-white">{v}</span>
+                      <span className="text-white font-bold">{v}</span>
                     </div>
                   ))}
                 </div>
+
                 <button
                   onClick={() => {
                     if (!account) { toast.error('Connect your wallet first!'); return }
@@ -269,7 +339,6 @@ export default function PortfolioPage() {
             )}
           </div>
         </div>
-
       </div>
     </div>
   )
