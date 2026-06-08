@@ -212,7 +212,21 @@ ANTHROPIC_API_KEY=sk-ant-...
 - [ ] Mobile app
 
 ---
+## ⚡ Why Sui?
 
+Most options protocols store positions as account balance mappings.
+On Volara, each option is a native Move object in your wallet.
+
+This enables:
+- **Transferable positions** — send your option to anyone
+- **Object-native ownership** — no synthetic abstractions
+- **Parallel settlement** — multiple options settle simultaneously
+- **Composability** — options can be used in other protocols
+- **Sub-second finality** — instant settlement at expiry
+
+This is not possible on EVM chains without significant complexity.
+
+---
 ## 🏆 Sui Overflow Hackathon
 
 Built for **Sui Overflow 2026** hackathon.
