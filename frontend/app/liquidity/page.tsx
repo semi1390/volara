@@ -57,6 +57,23 @@ export default function LiquidityPage() {
     ? (poolData.data.content.fields as any)?.total_shares ?? '0'
     : '0'
 
+
+    const totalPremiums = poolData?.data?.content?.dataType === 'moveObject'
+  ? parseInt((poolData.data.content.fields as any)?.total_premiums_collected ?? '0') / 1_000_000_000
+  : 0
+
+const realPoolBalance = parseFloat(poolBalance)
+
+// Real APY = (total premiums collected / pool balance) * 52 weeks * 100
+const realAPY = realPoolBalance > 0
+  ? Math.min(((totalPremiums / realPoolBalance) * 52 * 100), 999).toFixed(1)
+  : POOL_STATS.apy.toFixed(1)
+
+// Real utilization = premiums / balance * 100
+const realUtilization = realPoolBalance > 0
+  ? Math.min((totalPremiums / realPoolBalance) * 100, 100).toFixed(0)
+  : POOL_STATS.utilization
+
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [amount, setAmount] = useState('')
   const [insight, setInsight] = useState<any>(null)
@@ -129,14 +146,14 @@ export default function LiquidityPage() {
           {[
             { label: 'Deposited Amount', value: `${poolBalance} SUI`, sub: null, color: 'text-white' },
             { label: 'Earnings (All Time)', value: `${POOL_STATS.earnings.toLocaleString()} USDC`, sub: `+${POOL_STATS.earningsPct}%`, color: 'text-profit' },
-            {
-              label: 'Pool Utilization', value: `${POOL_STATS.utilization}%`,
+           {
+  label: 'Pool Utilization', value: `${realUtilization}%`,
               sub: <span className={cn('text-xs px-2 py-0.5 rounded-full font-mono', POOL_STATS.utilization < 40 ? 'bg-profit/15 text-profit' : POOL_STATS.utilization < 70 ? 'bg-yellow-400/15 text-yellow-400' : 'bg-danger/15 text-danger')}>
                 {POOL_STATS.riskLevel}
               </span>,
               color: POOL_STATS.utilization < 40 ? 'text-profit' : POOL_STATS.utilization < 70 ? 'text-yellow-400' : 'text-danger'
             },
-            { label: 'APY (From Premiums)', value: `${POOL_STATS.apy}%`, sub: `+${POOL_STATS.apyChange}%`, color: 'text-profit' },
+            { label: 'APY (From Premiums)', value: `${realAPY}%`, sub: 'From real premiums', color: 'text-profit' },
           ].map((card, i) => (
             <div key={i} className="card p-4 md:p-5">
               <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3 leading-tight">{card.label}</div>
