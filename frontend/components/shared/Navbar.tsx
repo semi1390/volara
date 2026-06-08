@@ -22,22 +22,19 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const account = useCurrentAccount()
 
-
-
-
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-return (
+  return (
     <nav className={cn(
       'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
       scrolled ? 'bg-background/80 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'
     )}>
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
+        <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center group-hover:shadow-glow-indigo transition-all">
             <Zap size={16} className="text-primary" />
           </div>
@@ -72,12 +69,22 @@ return (
             <div className="w-1.5 h-1.5 rounded-full bg-profit status-pulse" />
             <span className="text-xs text-profit font-mono">Sui Testnet</span>
           </div>
-          <ConnectButton />
+
+          {/*
+           * Scale ConnectButton to 78% on mobile, full size on md+.
+           * origin-right anchors the scale to the right edge so it
+           * stays flush against the hamburger and doesn't overlap the logo.
+           * No clipping, no text cutoff — just smaller.
+           */}
+          <div className="scale-[0.78] origin-right md:scale-100">
+            <ConnectButton />
+          </div>
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden flex flex-col gap-1.5 p-2"
+            className="md:hidden flex flex-col gap-1.5 p-2 flex-shrink-0"
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
           >
             <div className={cn('w-5 h-0.5 bg-white transition-all', mobileOpen && 'rotate-45 translate-y-2')} />
             <div className={cn('w-5 h-0.5 bg-white transition-all', mobileOpen && 'opacity-0')} />

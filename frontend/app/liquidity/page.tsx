@@ -56,6 +56,7 @@ export default function LiquidityPage() {
   const totalShares = poolData?.data?.content?.dataType === 'moveObject'
     ? (poolData.data.content.fields as any)?.total_shares ?? '0'
     : '0'
+
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [amount, setAmount] = useState('')
   const [insight, setInsight] = useState<any>(null)
@@ -114,12 +115,17 @@ export default function LiquidityPage() {
   return (
     <div className="pt-20 md:pt-24 pb-12 min-h-screen">
       <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-        <div className="mb-10">
-          <h1 className="font-syne font-extrabold text-5xl text-white mb-3">Provide Liquidity</h1>
-          <p className="text-text-secondary font-mono">Earn fees by supplying USDC to the Volara options pool.</p>
+
+        {/* Header: smaller heading on mobile */}
+        <div className="mb-8 md:mb-10">
+          <h1 className="font-syne font-extrabold text-4xl md:text-5xl text-white mb-2 md:mb-3">
+            Provide Liquidity
+          </h1>
+          <p className="text-text-secondary font-mono text-sm">Earn fees by supplying USDC to the Volara options pool.</p>
         </div>
 
-        <div className="grid grid-cols-4 gap-5 mb-10">
+        {/* Stats grid: 2×2 on mobile, 4-col on md+ */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
           {[
             { label: 'Deposited Amount', value: `${poolBalance} SUI`, sub: null, color: 'text-white' },
             { label: 'Earnings (All Time)', value: `${POOL_STATS.earnings.toLocaleString()} USDC`, sub: `+${POOL_STATS.earningsPct}%`, color: 'text-profit' },
@@ -132,9 +138,9 @@ export default function LiquidityPage() {
             },
             { label: 'APY (From Premiums)', value: `${POOL_STATS.apy}%`, sub: `+${POOL_STATS.apyChange}%`, color: 'text-profit' },
           ].map((card, i) => (
-            <div key={i} className="card p-5">
-              <div className="text-text-secondary text-xs font-mono mb-3">{card.label}</div>
-              <div className={cn('font-mono font-bold text-2xl mb-1', card.color)}>{card.value}</div>
+            <div key={i} className="card p-4 md:p-5">
+              <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3 leading-tight">{card.label}</div>
+              <div className={cn('font-mono font-bold text-xl md:text-2xl mb-1 break-all', card.color)}>{card.value}</div>
               {card.sub && (
                 typeof card.sub === 'string'
                   ? <div className="text-profit text-xs font-mono">{card.sub}</div>
@@ -144,16 +150,21 @@ export default function LiquidityPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-[1fr_380px] gap-8">
+        {/* Main layout: single col on mobile, [1fr_380px] on lg+ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 md:gap-8">
+
+          {/* LEFT — form + chart */}
           <div className="space-y-6">
-            <div className="card p-6">
-              <div className="flex gap-1 mb-6 bg-background rounded-xl p-1">
+
+            {/* Deposit / Withdraw form */}
+            <div className="card p-5 md:p-6">
+              <div className="flex gap-1 mb-5 md:mb-6 bg-background rounded-xl p-1">
                 {(['deposit', 'withdraw'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={cn(
-                      'flex-1 py-2.5 rounded-lg text-sm font-mono font-medium capitalize transition-all',
+                      'flex-1 py-2.5 rounded-lg text-sm font-mono font-medium capitalize transition-all min-h-[40px]',
                       activeTab === tab ? 'bg-primary text-white' : 'text-text-secondary hover:text-white'
                     )}
                   >
@@ -170,9 +181,9 @@ export default function LiquidityPage() {
                     onChange={e => setAmount(e.target.value)}
                     placeholder="0.00"
                     type="number"
-                    className="flex-1 bg-transparent font-mono text-white text-xl focus:outline-none placeholder-text-secondary/40"
+                    className="flex-1 bg-transparent font-mono text-white text-xl focus:outline-none placeholder-text-secondary/40 min-w-0"
                   />
-                  <span className="text-text-secondary font-mono text-sm">~{amount ? `-${parseFloat(amount).toFixed(0)}` : '-0'} USDC</span>
+                  <span className="text-text-secondary font-mono text-sm flex-shrink-0">~{amount ? `-${parseFloat(amount).toFixed(0)}` : '-0'} USDC</span>
                 </div>
                 <div className="flex gap-2 mt-2">
                   {['25%', '50%', '75%', 'MAX'].map(pct => (
@@ -183,7 +194,7 @@ export default function LiquidityPage() {
                         const p = pct === 'MAX' ? 1 : parseInt(pct) / 100
                         setAmount((maxBalance * p).toFixed(0))
                       }}
-                      className="flex-1 py-1 text-xs font-mono rounded-lg bg-white/5 text-text-secondary hover:bg-primary/15 hover:text-primary transition-all"
+                      className="flex-1 py-1.5 text-xs font-mono rounded-lg bg-white/5 text-text-secondary hover:bg-primary/15 hover:text-primary transition-all min-h-[32px]"
                     >
                       {pct}
                     </button>
@@ -196,23 +207,23 @@ export default function LiquidityPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-text-secondary text-xs font-mono mb-1">Weekly Yield</div>
-                    <div className="text-profit font-mono font-bold text-xl">{estimatedWeekly} <span className="text-xs text-text-secondary">USDC</span></div>
+                    <div className="text-profit font-mono font-bold text-lg md:text-xl">{estimatedWeekly} <span className="text-xs text-text-secondary">USDC</span></div>
                   </div>
                   <div>
                     <div className="text-text-secondary text-xs font-mono mb-1">Monthly Estimate</div>
-                    <div className="text-profit font-mono font-bold text-xl">{estimatedMonthly} <span className="text-xs text-text-secondary">USDC</span></div>
+                    <div className="text-profit font-mono font-bold text-lg md:text-xl">{estimatedMonthly} <span className="text-xs text-text-secondary">USDC</span></div>
                   </div>
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-5 md:mb-6">
                 <div className="text-text-secondary text-xs font-mono mb-3">RISK LEVEL</div>
                 <RiskMeter level={POOL_STATS.riskLevel} />
               </div>
 
               <button
                 onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
-                className="w-full py-4 rounded-xl bg-primary text-white font-syne font-bold text-lg hover:shadow-glow-indigo transition-all"
+                className="w-full py-4 rounded-xl bg-primary text-white font-syne font-bold text-lg hover:shadow-glow-indigo transition-all min-h-[52px]"
               >
                 {activeTab === 'deposit' ? 'Deposit USDC' : 'Withdraw USDC'}
               </button>
@@ -224,16 +235,18 @@ export default function LiquidityPage() {
               )}
             </div>
 
-            <div className="card p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-syne font-bold text-xl text-white">Pool Analytics</h3>
-                <div className="flex gap-1">
+            {/* Pool Analytics chart */}
+            <div className="card p-5 md:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5 md:mb-6">
+                <h3 className="font-syne font-bold text-lg md:text-xl text-white">Pool Analytics</h3>
+                {/* Filter buttons: scrollable row on mobile */}
+                <div className="flex gap-1 overflow-x-auto">
                   {(['7D', '30D', '90D', '1Y', 'ALL'] as const).map(f => (
                     <button
                       key={f}
                       onClick={() => setAnalyticsFilter(f)}
                       className={cn(
-                        'px-3 py-1 rounded-lg text-xs font-mono transition-all',
+                        'px-2.5 md:px-3 py-1 rounded-lg text-xs font-mono transition-all flex-shrink-0',
                         analyticsFilter === f ? 'bg-primary/15 text-primary border border-primary/30' : 'text-text-secondary hover:text-white'
                       )}
                     >
@@ -242,40 +255,45 @@ export default function LiquidityPage() {
                   ))}
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={ANALYTICS_DATA} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="apyGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="liqGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="utilGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="date" tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'IBM Plex Mono' }} />
-                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'IBM Plex Mono' }} />
-                  <Tooltip
-                    contentStyle={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontFamily: 'IBM Plex Mono', fontSize: '12px' }}
-                    labelStyle={{ color: '#FFFFFF' }}
-                  />
-                  <Legend wrapperStyle={{ fontFamily: 'IBM Plex Mono', fontSize: '12px' }} />
-                  <Area type="monotone" dataKey="apy" stroke="#10B981" fill="url(#apyGrad)" strokeWidth={2} name="APY %" />
-                  <Area type="monotone" dataKey="liquidity" stroke="#6366F1" fill="url(#liqGrad)" strokeWidth={2} name="Liquidity $M" />
-                  <Area type="monotone" dataKey="utilization" stroke="#F59E0B" fill="url(#utilGrad)" strokeWidth={2} name="Utilization %" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {/* Chart: constrain height on mobile, auto on desktop */}
+              <div className="w-full overflow-hidden">
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={ANALYTICS_DATA} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="apyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="liqGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="utilGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="date" tick={{ fill: '#9CA3AF', fontSize: 10, fontFamily: 'IBM Plex Mono' }} />
+                    <YAxis tick={{ fill: '#9CA3AF', fontSize: 10, fontFamily: 'IBM Plex Mono' }} />
+                    <Tooltip
+                      contentStyle={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontFamily: 'IBM Plex Mono', fontSize: '12px' }}
+                      labelStyle={{ color: '#FFFFFF' }}
+                    />
+                    <Legend wrapperStyle={{ fontFamily: 'IBM Plex Mono', fontSize: '11px' }} />
+                    <Area type="monotone" dataKey="apy" stroke="#10B981" fill="url(#apyGrad)" strokeWidth={2} name="APY %" />
+                    <Area type="monotone" dataKey="liquidity" stroke="#6366F1" fill="url(#liqGrad)" strokeWidth={2} name="Liquidity $M" />
+                    <Area type="monotone" dataKey="utilization" stroke="#F59E0B" fill="url(#utilGrad)" strokeWidth={2} name="Utilization %" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-5">
-            <div className="ai-box p-5">
+          {/* RIGHT — AI insight + pool info + warning */}
+          {/* Naturally stacks below on mobile */}
+          <div className="space-y-4 md:space-y-5">
+            <div className="ai-box p-4 md:p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Brain size={16} className="text-primary" />
                 <span className="text-primary font-mono text-xs font-bold">Volara AI Pool Insight</span>
@@ -313,7 +331,7 @@ export default function LiquidityPage() {
               )}
             </div>
 
-            <div className="card p-5 space-y-4">
+            <div className="card p-4 md:p-5 space-y-4">
               <h3 className="font-syne font-semibold text-white">Pool Information</h3>
               {[
                 { label: 'Protocol', value: 'Volara v1' },
@@ -337,10 +355,9 @@ export default function LiquidityPage() {
               </p>
             </div>
           </div>
+
         </div>
       </div>
     </div>
   )
 }
-
-

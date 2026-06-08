@@ -116,31 +116,38 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-[1440px] mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono mb-6 md:mb-8">
               <div className="w-1.5 h-1.5 rounded-full bg-primary status-pulse" />
               Live on Sui Testnet
             </div>
-            <h1 className="font-syne font-extrabold text-4xl md:text-7xl leading-none mb-6">
+
+            {/* Heading: smaller on mobile to prevent overflow */}
+            <h1 className="font-syne font-extrabold text-4xl md:text-7xl leading-none mb-4 md:mb-6">
               <span className="gradient-text">Hedge smarter.</span>
               <br />
               <span className="text-white">Trade better.</span>
             </h1>
-            <p className="text-text-secondary text-lg font-mono leading-relaxed mb-10 max-w-lg">
+
+            <p className="text-text-secondary text-base md:text-lg font-mono leading-relaxed mb-8 md:mb-10 max-w-lg">
               Decentralized options on Sui with AI-powered pricing, instant settlement, and institutional-grade liquidity.
             </p>
-            <div className="flex items-center gap-4 mb-12">
-              <Link href="/trade">
-                <button className="px-8 py-3.5 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo hover:bg-primary/90 transition-all flex items-center gap-2">
+
+            {/* CTA buttons: stack on mobile, row on sm+ */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8 md:mb-12">
+              <Link href="/trade" className="w-full sm:w-auto">
+                <button className="w-full px-8 py-3.5 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo hover:bg-primary/90 transition-all flex items-center justify-center gap-2">
                   Start Trading <ArrowRight size={16} />
                 </button>
               </Link>
-              <Link href="/liquidity">
-                <button className="px-8 py-3.5 rounded-xl border border-white/15 text-white font-mono hover:border-primary/50 hover:bg-primary/5 transition-all">
+              <Link href="/liquidity" className="w-full sm:w-auto">
+                <button className="w-full px-8 py-3.5 rounded-xl border border-white/15 text-white font-mono hover:border-primary/50 hover:bg-primary/5 transition-all text-center">
                   Provide Liquidity
                 </button>
               </Link>
             </div>
-            <div className="flex items-center gap-6">
+
+            {/* Trust badges: wrap on mobile */}
+            <div className="flex flex-wrap items-center gap-4 md:gap-6">
               {[
                 { label: 'Security Audited', icon: '🔒' },
                 { label: 'Pyth Oracle', icon: '⚡' },
@@ -154,25 +161,28 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Terminal visual */}
-          <div className="relative">
-            <div className="card p-6 relative">
-              <div className="flex items-center gap-2 mb-4">
+          {/* Terminal visual
+              Mobile: shown but compact — hide the longer lines to keep it tight
+              Desktop: full version as before */}
+          <div className="relative mt-4 md:mt-0">
+            <div className="card p-4 md:p-6 relative">
+              <div className="flex items-center gap-2 mb-3 md:mb-4">
                 <div className="w-3 h-3 rounded-full bg-danger" />
                 <div className="w-3 h-3 rounded-full bg-yellow-400" />
                 <div className="w-3 h-3 rounded-full bg-profit" />
                 <span className="ml-2 text-text-secondary text-xs font-mono">volara.terminal</span>
               </div>
-              <div className="space-y-3 font-mono text-sm">
+              <div className="space-y-2 md:space-y-3 font-mono text-xs md:text-sm">
                 <div className="text-text-secondary">{'>'} Fetching SUI/USDC options...</div>
                 <div className="text-profit">✓ Mark Price: ${prices.sui.price > 0 ? prices.sui.price.toFixed(3) : '0.737'} <span className="animate-pulse">|</span></div>
                 <div className="text-text-secondary">{'>'} Running AI pricing model...</div>
                 <div className="text-primary">💡 CALL $0.80 — 34% chance of profit</div>
-                <div className="text-text-secondary">{'>'} Breakeven: <span className="text-white">$0.76</span></div>
-                <div className="text-text-secondary">{'>'} Risk level: <span className="text-yellow-400">Medium</span></div>
+                {/* Hide less critical lines on mobile to keep card compact */}
+                <div className="hidden sm:block text-text-secondary">{'>'} Breakeven: <span className="text-white">$0.76</span></div>
+                <div className="hidden sm:block text-text-secondary">{'>'} Risk level: <span className="text-yellow-400">Medium</span></div>
                 <div className="text-text-secondary">{'>'} IV: <span className="text-white">68.4%</span></div>
-                <div className="mt-4 p-3 rounded-lg bg-profit/10 border border-profit/20">
-                  <div className="text-profit font-bold">Position P&L: +$0.042 (+12.3%)</div>
+                <div className="mt-3 md:mt-4 p-2.5 md:p-3 rounded-lg bg-profit/10 border border-profit/20">
+                  <div className="text-profit font-bold text-xs md:text-sm">Position P&L: +$0.042 (+12.3%)</div>
                 </div>
               </div>
             </div>
@@ -197,8 +207,8 @@ export default function LandingPage() {
             { label: 'Active Traders', value: PLATFORM_STATS.activeTraders, prefix: '' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
-              <div className="text-text-secondary text-xs font-mono mb-2 uppercase tracking-wider">{stat.label}</div>
-              <div className="font-syne font-bold text-3xl text-white">
+              <div className="text-text-secondary text-xs font-mono mb-1 md:mb-2 uppercase tracking-wider">{stat.label}</div>
+              <div className="font-syne font-bold text-2xl md:text-3xl text-white">
                 <AnimatedCounter value={stat.value} prefix={stat.prefix} />
               </div>
             </div>
@@ -207,14 +217,14 @@ export default function LandingPage() {
       </section>
 
       {/* Featured Markets */}
-      <section className="py-20 max-w-[1440px] mx-auto px-4 md:px-8">
-        <div className="flex items-center justify-between mb-10">
+      <section className="py-12 md:py-20 max-w-[1440px] mx-auto px-4 md:px-8">
+        <div className="flex items-center justify-between mb-8 md:mb-10">
           <div>
-            <h2 className="font-syne font-bold text-4xl text-white mb-2">Featured Markets</h2>
+            <h2 className="font-syne font-bold text-2xl md:text-4xl text-white mb-1 md:mb-2">Featured Markets</h2>
             <p className="text-text-secondary font-mono text-sm">Most active options markets on Sui</p>
           </div>
-          <Link href="/markets" className="flex items-center gap-2 text-primary font-mono text-sm hover:gap-3 transition-all">
-            View all markets <ChevronRight size={16} />
+          <Link href="/markets" className="flex items-center gap-1 md:gap-2 text-primary font-mono text-sm hover:gap-3 transition-all flex-shrink-0">
+            View all <ChevronRight size={16} />
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -225,22 +235,23 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 bg-card/30 border-y border-white/5">
+      <section className="py-12 md:py-20 bg-card/30 border-y border-white/5">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-          <h2 className="font-syne font-bold text-4xl text-center text-white mb-16">How It Works</h2>
+          <h2 className="font-syne font-bold text-2xl md:text-4xl text-center text-white mb-10 md:mb-16">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
-            <div className="absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
+            {/* Connector line — desktop only */}
+            <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
             {[
               { step: 1, title: 'Choose Option', desc: 'Select CALL or PUT options on your favorite Sui assets. Pick your strike price and expiry.', icon: '🎯' },
               { step: 2, title: 'AI Prices Risk', desc: 'Volara AI analyzes volatility, market conditions, and prices fair options with probability estimates.', icon: '🧠' },
               { step: 3, title: 'Auto Settlement', desc: 'Options settle automatically on Sui at expiry. Claim your payout in seconds with no intermediaries.', icon: '⚡' },
             ].map((item) => (
               <div key={item.step} className="relative text-center">
-                <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-3xl mx-auto mb-6 hover:shadow-glow-indigo transition-all">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-2xl md:text-3xl mx-auto mb-4 md:mb-6 hover:shadow-glow-indigo transition-all">
                   {item.icon}
                 </div>
                 <div className="font-mono text-primary text-xs mb-2">STEP {item.step}</div>
-                <h3 className="font-syne font-bold text-xl text-white mb-3">{item.title}</h3>
+                <h3 className="font-syne font-bold text-lg md:text-xl text-white mb-2 md:mb-3">{item.title}</h3>
                 <p className="text-text-secondary font-mono text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -249,8 +260,8 @@ export default function LandingPage() {
       </section>
 
       {/* Why Volara */}
-      <section className="py-20 max-w-[1440px] mx-auto px-4 md:px-8">
-        <h2 className="font-syne font-bold text-4xl text-white mb-12">Why Volara?</h2>
+      <section className="py-12 md:py-20 max-w-[1440px] mx-auto px-4 md:px-8">
+        <h2 className="font-syne font-bold text-2xl md:text-4xl text-white mb-8 md:mb-12">Why Volara?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {[
             { icon: <Brain className="text-primary" size={24} />, title: 'AI Powered Pricing', desc: 'Volara AI-generated fair value estimates and probability analysis on every trade. Know your risk before you trade.' },
@@ -261,7 +272,7 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-xl bg-card border border-white/10 flex items-center justify-center mb-5">
                 {feature.icon}
               </div>
-              <h3 className="font-syne font-bold text-xl text-white mb-3">{feature.title}</h3>
+              <h3 className="font-syne font-bold text-lg md:text-xl text-white mb-3">{feature.title}</h3>
               <p className="text-text-secondary font-mono text-sm leading-relaxed">{feature.desc}</p>
             </div>
           ))}
@@ -269,14 +280,14 @@ export default function LandingPage() {
       </section>
 
       {/* AI Showcase */}
-      <section className="py-20 bg-card/20 border-y border-white/5">
+      <section className="py-12 md:py-20 bg-card/20 border-y border-white/5">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono mb-6">
               <Brain size={12} /> Powered by Volara AI
             </div>
-            <h2 className="font-syne font-bold text-4xl text-white mb-6">AI That Trades With You</h2>
-            <p className="text-text-secondary font-mono text-sm leading-relaxed mb-8">
+            <h2 className="font-syne font-bold text-2xl md:text-4xl text-white mb-4 md:mb-6">AI That Trades With You</h2>
+            <p className="text-text-secondary font-mono text-sm leading-relaxed mb-6 md:mb-8">
               Get real-time insights, risk analysis, and market explanations from Volara AI. Every trade comes with probability estimates, breakeven calculations, and plain-English explanations.
             </p>
             <Link href="/trade">
@@ -285,17 +296,17 @@ export default function LandingPage() {
               </button>
             </Link>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {[
               { text: 'This PUT has a 62% chance of expiring ITM.', detail: 'Based on current IV of 68% and 13 days to expiry.' },
               { text: 'Breakeven for this CALL is $0.76.', detail: 'Current price $0.737 + $0.023 premium paid.' },
               { text: 'Risk level: Medium. IV elevated ahead of settlement Friday.', detail: 'Historical vol suggests pullback likely.' },
             ].map((item, i) => (
-              <div key={i} className="ai-box p-4">
+              <div key={i} className="ai-box p-3 md:p-4">
                 <div className="flex items-start gap-3">
                   <span className="text-lg mt-0.5">💡</span>
                   <div>
-                    <div className="text-white font-mono text-sm mb-1">{item.text}</div>
+                    <div className="text-white font-mono text-xs md:text-sm mb-1">{item.text}</div>
                     <div className="text-text-secondary font-mono text-xs">{item.detail}</div>
                   </div>
                 </div>
@@ -306,20 +317,26 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Banner */}
-      <section className="py-24 max-w-[1440px] mx-auto px-4 md:px-8">
-        <div className="card p-16 text-center relative overflow-hidden">
+      <section className="py-12 md:py-24 max-w-[1440px] mx-auto px-4 md:px-8">
+        <div className="card p-8 md:p-16 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-profit/5" />
           <div className="relative z-10">
-            <h2 className="font-syne font-extrabold text-5xl text-white mb-4">Ready to trade smarter?</h2>
-            <p className="text-text-secondary font-mono mb-10">Join thousands of traders hedging and speculating with Volara.</p>
-            <div className="flex items-center justify-center gap-4">
-              <Link href="/trade">
-                <button className="px-10 py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-lg">
+            {/* Heading: capped at 3xl on mobile to stop overflow */}
+            <h2 className="font-syne font-extrabold text-3xl md:text-5xl text-white mb-3 md:mb-4">
+              Ready to trade smarter?
+            </h2>
+            <p className="text-text-secondary font-mono mb-8 md:mb-10 text-sm md:text-base">
+              Join thousands of traders hedging and speculating with Volara.
+            </p>
+            {/* Buttons: stack on mobile, row on sm+ */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4">
+              <Link href="/trade" className="w-full sm:w-auto">
+                <button className="w-full px-8 md:px-10 py-3.5 md:py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-base md:text-lg">
                   Start Trading
                 </button>
               </Link>
-              <Link href="/liquidity">
-                <button className="px-10 py-4 rounded-xl border border-white/15 text-white font-mono hover:border-primary/40 transition-all text-lg">
+              <Link href="/liquidity" className="w-full sm:w-auto">
+                <button className="w-full px-8 md:px-10 py-3.5 md:py-4 rounded-xl border border-white/15 text-white font-mono hover:border-primary/40 transition-all text-base md:text-lg">
                   Provide Liquidity
                 </button>
               </Link>
@@ -329,20 +346,27 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-12 bg-card/20">
+      <footer className="border-t border-white/5 py-10 md:py-12 bg-card/20">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-10">
-            <div className="col-span-2">
-              <div className="flex items-center gap-2 mb-4">
+          {/*
+           * Mobile:  2-col grid — brand col spans full width, then 2 link cols per row
+           * Desktop: 5-col grid as before
+           */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-8 md:mb-10">
+            {/* Brand — full width on mobile */}
+            <div className="col-span-2 md:col-span-2">
+              <div className="flex items-center gap-2 mb-3 md:mb-4">
                 <Zap size={20} className="text-primary" />
                 <span className="font-syne font-bold text-xl">Volara</span>
               </div>
-              <p className="text-text-secondary font-mono text-sm mb-4">Hedge smarter. Trade better.</p>
+              <p className="text-text-secondary font-mono text-sm mb-3 md:mb-4">Hedge smarter. Trade better.</p>
               <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
                 <span>Built on</span>
                 <span className="text-primary font-bold">⬡ Sui</span>
               </div>
             </div>
+
+            {/* Link columns — on mobile: 2 per row naturally from grid-cols-2 */}
             {[
               { title: 'Product', links: ['Markets', 'Trade', 'Liquidity', 'Portfolio', 'Settlement'] },
               { title: 'Resources', links: ['Documentation', 'Guides', 'API', 'Blog'] },
@@ -350,7 +374,7 @@ export default function LandingPage() {
               { title: 'Legal', links: ['Terms', 'Privacy', 'Disclaimer'] },
             ].map((col) => (
               <div key={col.title}>
-                <div className="font-syne font-semibold text-white mb-4 text-sm">{col.title}</div>
+                <div className="font-syne font-semibold text-white mb-3 md:mb-4 text-sm">{col.title}</div>
                 <ul className="space-y-2">
                   {col.links.map((link) => (
                     <li key={link}>
@@ -361,7 +385,9 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div className="border-t border-white/5 pt-6 flex items-center justify-between">
+
+          {/* Footer bottom: stack on mobile */}
+          <div className="border-t border-white/5 pt-5 md:pt-6 flex flex-col sm:flex-row items-center sm:justify-between gap-3">
             <span className="text-text-secondary font-mono text-xs">© 2026 Volara. All rights reserved.</span>
             <div className="flex items-center gap-4">
               {['Twitter', 'Discord', 'GitHub', 'Docs'].map((s) => (
@@ -374,6 +400,3 @@ export default function LandingPage() {
     </div>
   )
 }
-
-
-

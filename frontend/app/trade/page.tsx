@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, ChevronDown, Plus, Minus, ChevronRight } from 'lucide-react'
+import { X, ChevronDown, Plus, Minus, ChevronRight, BookOpen } from 'lucide-react'
 import { cn, calculatePremium } from '@/lib/utils'
 import { RECENT_TRADES, EXPIRED_POSITIONS, MARKETS, EXPIRIES } from '@/lib/dummy-data'
 import { getOptionAdvisorInsight } from '@/lib/claude'
@@ -106,6 +106,9 @@ export default function TradePage() {
   const { positions, isLoading: positionsLoading, refetch: refetchPositions } = usePositions()
   const { mutate: signAndExecute } = useSignAndExecuteTransaction()
 
+  // ── NEW: mobile order book toggle ──────────────────────────────────────────
+  const [showOrderBook, setShowOrderBook] = useState(false)
+
   const { data: balanceData } = useSuiClientQuery(
     'getBalance',
     { owner: account?.address ?? '' },
@@ -179,13 +182,56 @@ export default function TradePage() {
   }
 
   return (
-    <div className="pt-16 h-screen flex flex-col overflow-hidden bg-background">
-      <div className="flex-1 grid grid-cols-[260px_1fr_300px] overflow-hidden">
+    /*
+     * MOBILE LAYOUT CHANGES:
+     * - Removed h-screen + overflow-hidden on mobile (causes squished 3-col)
+     * - On mobile: single column, scrollable
+     * - On lg+: restore original h-screen 3-col fixed layout
+     */
+    <div className="pt-16 bg-background lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
+      <div className="lg:flex-1 lg:grid lg:grid-cols-[260px_1fr_300px] lg:overflow-hidden flex flex-col">
+
+        {/* ── MOBILE ORDER BOOK TOGGLE BUTTON ─────────────────────────────── */}
+        {/* Only visible on mobile, sits above the chart */}
+        <div className="lg:hidden flex items-center justify-between px-4 py-2 border-b border-white/5 bg-card/20">
+          <div className="relative">
+            <select
+              value={selectedMarketId}
+              onChange={e => setSelectedMarketId(e.target.value)}
+              className="bg-background border border-white/10 rounded-xl px-3 py-1.5 font-syne font-semibold text-white text-sm appearance-none cursor-pointer focus:outline-none focus:border-primary/40 pr-7"
+            >
+              {MARKETS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+          <button
+            onClick={() => setShowOrderBook(!showOrderBook)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono border transition-all min-h-[36px]',
+              showOrderBook
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-white/10 text-text-secondary hover:text-white'
+            )}
+          >
+            <BookOpen size={12} />
+            Order Book
+          </button>
+        </div>
 
         {/* LEFT — Order Book */}
-        <div className="border-r border-white/5 flex flex-col overflow-hidden bg-card/20">
+        {/*
+         * MOBILE: hidden by default, shown when showOrderBook=true via slide-down
+         * DESKTOP (lg+): always visible as left panel
+         */}
+        <div className={cn(
+          'border-white/5 flex flex-col overflow-hidden bg-card/20',
+          'lg:border-r',                          // border only on desktop
+          showOrderBook ? 'flex' : 'hidden',       // mobile toggle
+          'lg:flex'                                 // always show on desktop
+        )}>
+          {/* Desktop-only market selector (hidden on mobile — we have one above) */}
           <div className="p-3 border-b border-white/5">
-            <div className="relative mb-3">
+            <div className="relative mb-3 hidden lg:block">
               <select
                 value={selectedMarketId}
                 onChange={e => setSelectedMarketId(e.target.value)}
@@ -195,11 +241,23 @@ export default function TradePage() {
               </select>
               <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
+
+            {/* Mobile: close button for order book */}
+            <div className="flex items-center justify-between mb-3 lg:hidden">
+              <span className="text-xs font-mono text-text-secondary">ORDER BOOK</span>
+              <button
+                onClick={() => setShowOrderBook(false)}
+                className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-white/10"
+              >
+                <X size={12} />
+              </button>
+            </div>
+
             <div className="flex gap-1">
               {(['CALLS', 'PUTS'] as const).map(tab => (
                 <button key={tab}
                   onClick={() => { setActiveTab(tab); setOptionType(tab === 'CALLS' ? 'CALL' : 'PUT') }}
-                  className={cn('flex-1 py-1.5 rounded-lg text-xs font-mono transition-all',
+                  className={cn('flex-1 py-1.5 rounded-lg text-xs font-mono transition-all min-h-[36px]',
                     activeTab === tab
                       ? tab === 'CALLS' ? 'bg-profit/15 text-profit border border-profit/30' : 'bg-danger/15 text-danger border border-danger/30'
                       : 'text-text-secondary hover:text-white bg-white/5'
@@ -263,27 +321,38 @@ export default function TradePage() {
         </div>
 
         {/* CENTER — Chart + Tabs */}
-        <div className="border-r border-white/5 flex flex-col overflow-hidden">
+        {/*
+         * MOBILE: full width, natural height (not fixed)
+         * DESKTOP: flex column with fixed h-screen inherited from parent
+         */}
+        <div className="border-white/5 flex flex-col lg:border-r lg:overflow-hidden">
           {/* Chart */}
-          <div className="border-b border-white/5 flex-shrink-0" style={{ height: '320px' }}>
+          {/*
+           * MOBILE: 260px tall (reasonable on 375px width)
+           * DESKTOP: 320px fixed as before
+           */}
+          <div className="border-b border-white/5 flex-shrink-0 h-[260px] lg:h-[320px]">
             <TradingChart market={selectedMarket} />
           </div>
 
           {/* Market info bar */}
-          <div className="px-4 py-2 border-b border-white/5 flex items-center gap-6 bg-card/20 flex-shrink-0">
-            <div className="flex items-center gap-2">
+          {/*
+           * MOBILE: horizontal scroll so all 4 stats visible without wrapping
+           */}
+          <div className="px-4 py-2 border-b border-white/5 flex items-center gap-4 lg:gap-6 bg-card/20 flex-shrink-0 overflow-x-auto">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-text-secondary text-xs font-mono">Last</span>
               <span className="text-white font-mono text-sm font-bold">${selectedMarket.price.toFixed(4)}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-text-secondary text-xs font-mono">IV</span>
               <span className="text-primary font-mono text-sm">{selectedMarket.impliedVol}%</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-text-secondary text-xs font-mono">Vol</span>
               <span className="text-white font-mono text-sm">${(selectedMarket.volume24h / 1_000_000).toFixed(1)}M</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-text-secondary text-xs font-mono">OI</span>
               <span className="text-white font-mono text-sm">${(selectedMarket.openInterest / 1_000_000).toFixed(1)}M</span>
             </div>
@@ -293,59 +362,81 @@ export default function TradePage() {
           <div className="flex border-b border-white/5 bg-card/10 flex-shrink-0">
             <button
               onClick={() => setCenterTab('trade')}
-              className={cn('px-4 py-2.5 text-xs font-mono transition-all',
+              className={cn('px-4 py-2.5 text-xs font-mono transition-all min-h-[44px]',
                 centerTab === 'trade' ? 'text-white border-b-2 border-primary' : 'text-text-secondary hover:text-white'
               )}
             >Trade</button>
             <button
               onClick={() => setCenterTab('chain')}
-              className={cn('px-4 py-2.5 text-xs font-mono transition-all',
+              className={cn('px-4 py-2.5 text-xs font-mono transition-all min-h-[44px]',
                 centerTab === 'chain' ? 'text-white border-b-2 border-primary' : 'text-text-secondary hover:text-white'
               )}
             >Options Chain</button>
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto">
+          {/*
+           * MOBILE: natural height (no flex-1 overflow-y-auto which needs a fixed parent)
+           * DESKTOP: flex-1 + overflow-y-auto as before
+           */}
+          <div className="lg:flex-1 lg:overflow-y-auto">
             {centerTab === 'trade' ? (
               <div className="p-4 flex flex-col gap-4">
                 {/* CALL/PUT + Strike + Expiry */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex rounded-xl border border-white/10 p-0.5 gap-0.5">
+                {/*
+                 * MOBILE: stack into rows instead of one cramped flex-wrap line
+                 */}
+                <div className="flex flex-col gap-3">
+                  {/* Row 1: CALL/PUT toggle */}
+                  <div className="flex rounded-xl border border-white/10 p-0.5 gap-0.5 w-fit">
                     {(['CALL', 'PUT'] as OptionType[]).map(type => (
                       <button key={type} onClick={() => setOptionType(type)}
-                        className={cn('px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all',
+                        className={cn('px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all min-h-[36px]',
                           optionType === type ? type === 'CALL' ? 'pill-active-call' : 'pill-active-put' : 'text-text-secondary hover:text-white'
                         )}>{type}</button>
                     ))}
                   </div>
-                  <div className="flex gap-1 flex-wrap">
-                    {selectedMarket.strikes.slice(0, 6).map(strike => (
-                      <button key={strike} onClick={() => setSelectedStrike(strike)}
-                        className={cn('px-2 py-1 rounded-lg text-xs font-mono border transition-all',
-                          selectedStrike === strike ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-text-secondary hover:border-white/30'
-                        )}>{strike.toFixed(2)}</button>
-                    ))}
+
+                  {/* Row 2: Strike buttons — scrollable on mobile */}
+                  <div>
+                    <div className="text-text-secondary text-xs font-mono mb-1.5">Strike</div>
+                    <div className="flex gap-1 overflow-x-auto pb-1">
+                      {selectedMarket.strikes.slice(0, 6).map(strike => (
+                        <button key={strike} onClick={() => setSelectedStrike(strike)}
+                          className={cn('px-2 py-1.5 rounded-lg text-xs font-mono border transition-all flex-shrink-0 min-h-[36px]',
+                            selectedStrike === strike ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-text-secondary hover:border-white/30'
+                          )}>{strike.toFixed(2)}</button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex gap-1 ml-auto">
-                    {EXPIRIES.map(exp => (
-                      <button key={exp.label} onClick={() => setSelectedExpiry(exp)}
-                        className={cn('px-2 py-1 rounded-lg text-xs font-mono border transition-all',
-                          selectedExpiry.label === exp.label ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-text-secondary hover:border-white/30'
-                        )}>{exp.label}</button>
-                    ))}
+
+                  {/* Row 3: Expiry buttons */}
+                  <div>
+                    <div className="text-text-secondary text-xs font-mono mb-1.5">Expiry</div>
+                    <div className="flex gap-1 flex-wrap">
+                      {EXPIRIES.map(exp => (
+                        <button key={exp.label} onClick={() => setSelectedExpiry(exp)}
+                          className={cn('px-2 py-1.5 rounded-lg text-xs font-mono border transition-all min-h-[36px]',
+                            selectedExpiry.label === exp.label ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-text-secondary hover:border-white/30'
+                          )}>{exp.label}</button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Quantity + Premium */}
-                <div className="flex items-center gap-3">
+                {/*
+                 * MOBILE: stack quantity above premium stats
+                 * DESKTOP: side by side as before
+                 */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                   <div className="flex items-center gap-2 bg-card border border-white/10 rounded-xl px-3 py-2">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15"><Minus size={12} /></button>
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Minus size={12} /></button>
                     <input type="number" value={quantity} onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                       className="w-12 bg-transparent text-center font-mono text-white text-sm focus:outline-none" />
-                    <button onClick={() => setQuantity(quantity + 1)} className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15"><Plus size={12} /></button>
+                    <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Plus size={12} /></button>
                   </div>
-                  <div className="flex-1 grid grid-cols-3 gap-3 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
+                  <div className="w-full sm:flex-1 grid grid-cols-3 gap-3 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
                     <div><div className="text-text-secondary text-xs font-mono mb-0.5">Premium</div><div className="text-white font-bold text-sm font-mono">{totalPremium} SUI</div></div>
                     <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Loss</div><div className="text-danger font-bold text-sm font-mono">{totalPremium} SUI</div></div>
                     <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Profit</div><div className="text-profit font-bold text-sm font-mono">Unlimited</div></div>
@@ -355,67 +446,70 @@ export default function TradePage() {
             ) : (
               /* Options Chain */
               <div className="p-4">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex gap-2">
+                <div className="mb-4 flex items-center gap-3 flex-wrap">
+                  <div className="flex gap-2 flex-wrap">
                     {EXPIRIES.map(exp => (
                       <button key={exp.label} onClick={() => setSelectedExpiry(exp)}
-                        className={cn('px-3 py-1.5 rounded-lg text-xs font-mono border transition-all',
+                        className={cn('px-3 py-1.5 rounded-lg text-xs font-mono border transition-all min-h-[36px]',
                           selectedExpiry.label === exp.label ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-text-secondary hover:border-white/30'
                         )}>{exp.label}</button>
                     ))}
                   </div>
-                  <span className="text-text-secondary text-xs font-mono ml-auto">Spot: ${selectedMarket.price.toFixed(4)}</span>
+                  <span className="text-text-secondary text-xs font-mono sm:ml-auto">Spot: ${selectedMarket.price.toFixed(4)}</span>
                 </div>
 
-                <table className="w-full text-xs font-mono">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="text-left py-2 px-2 text-profit">Delta</th>
-                      <th className="text-right py-2 px-2 text-profit">Bid</th>
-                      <th className="text-right py-2 px-2 text-profit">Ask</th>
-                      <th className="text-center py-2 px-3 text-white">Strike</th>
-                      <th className="text-left py-2 px-2 text-danger">Bid</th>
-                      <th className="text-left py-2 px-2 text-danger">Ask</th>
-                      <th className="text-right py-2 px-2 text-danger">Delta</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedMarket.strikes.map(strike => {
-                      const isITMCall = selectedMarket.price > strike
-                      const isITMPut = selectedMarket.price < strike
-                      const callPremium = calculatePremium('CALL', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100)
-                      const putPremium = calculatePremium('PUT', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100)
-                      const callBid = +(callPremium * 0.95).toFixed(4)
-                      const callAsk = +(callPremium * 1.05).toFixed(4)
-                      const putBid = +(putPremium * 0.95).toFixed(4)
-                      const putAsk = +(putPremium * 1.05).toFixed(4)
-                      const callDelta = isITMCall ? 0.65 : 0.35
-                      const putDelta = isITMPut ? 0.65 : 0.35
-                      const isAtMoney = Math.abs(selectedMarket.price - strike) / selectedMarket.price < 0.02
+                {/* Options chain table — horizontal scroll on mobile */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs font-mono min-w-[480px]">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left py-2 px-2 text-profit">Delta</th>
+                        <th className="text-right py-2 px-2 text-profit">Bid</th>
+                        <th className="text-right py-2 px-2 text-profit">Ask</th>
+                        <th className="text-center py-2 px-3 text-white">Strike</th>
+                        <th className="text-left py-2 px-2 text-danger">Bid</th>
+                        <th className="text-left py-2 px-2 text-danger">Ask</th>
+                        <th className="text-right py-2 px-2 text-danger">Delta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedMarket.strikes.map(strike => {
+                        const isITMCall = selectedMarket.price > strike
+                        const isITMPut = selectedMarket.price < strike
+                        const callPremium = calculatePremium('CALL', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100)
+                        const putPremium = calculatePremium('PUT', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100)
+                        const callBid = +(callPremium * 0.95).toFixed(4)
+                        const callAsk = +(callPremium * 1.05).toFixed(4)
+                        const putBid = +(putPremium * 0.95).toFixed(4)
+                        const putAsk = +(putPremium * 1.05).toFixed(4)
+                        const callDelta = isITMCall ? 0.65 : 0.35
+                        const putDelta = isITMPut ? 0.65 : 0.35
+                        const isAtMoney = Math.abs(selectedMarket.price - strike) / selectedMarket.price < 0.02
 
-                      return (
-                        <tr key={strike}
-                          className={cn('border-b border-white/5 hover:bg-white/3 cursor-pointer transition-colors',
-                            isITMCall && 'bg-profit/3'
-                          )}
-                          onClick={() => { setSelectedStrike(strike); setCenterTab('trade') }}
-                        >
-                          <td className={cn('py-2 px-2', isITMCall ? 'text-profit font-bold' : 'text-text-secondary')}>{callDelta.toFixed(2)}</td>
-                          <td className="py-2 px-2 text-right text-profit">{callBid}</td>
-                          <td className="py-2 px-2 text-right text-profit">{callAsk}</td>
-                          <td className={cn('py-2 px-3 text-center font-bold',
-                            isAtMoney ? 'text-primary bg-primary/10 rounded' : 'text-white'
-                          )}>
-                            ${strike.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-2 text-danger">{putBid}</td>
-                          <td className="py-2 px-2 text-danger">{putAsk}</td>
-                          <td className={cn('py-2 px-2 text-right', isITMPut ? 'text-danger font-bold' : 'text-text-secondary')}>{putDelta.toFixed(2)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                        return (
+                          <tr key={strike}
+                            className={cn('border-b border-white/5 hover:bg-white/3 cursor-pointer transition-colors',
+                              isITMCall && 'bg-profit/3'
+                            )}
+                            onClick={() => { setSelectedStrike(strike); setCenterTab('trade') }}
+                          >
+                            <td className={cn('py-2 px-2', isITMCall ? 'text-profit font-bold' : 'text-text-secondary')}>{callDelta.toFixed(2)}</td>
+                            <td className="py-2 px-2 text-right text-profit">{callBid}</td>
+                            <td className="py-2 px-2 text-right text-profit">{callAsk}</td>
+                            <td className={cn('py-2 px-3 text-center font-bold',
+                              isAtMoney ? 'text-primary bg-primary/10 rounded' : 'text-white'
+                            )}>
+                              ${strike.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-2 text-danger">{putBid}</td>
+                            <td className="py-2 px-2 text-danger">{putAsk}</td>
+                            <td className={cn('py-2 px-2 text-right', isITMPut ? 'text-danger font-bold' : 'text-text-secondary')}>{putDelta.toFixed(2)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
                 <div className="mt-3 text-xs font-mono text-text-secondary flex gap-4">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 bg-profit/30 rounded inline-block" /> ITM</span>
                   <span>· Click row to select strike & trade</span>
@@ -426,11 +520,15 @@ export default function TradePage() {
         </div>
 
         {/* RIGHT — AI + Buy + Positions */}
-        <div className="flex flex-col overflow-hidden bg-card/10">
+        {/*
+         * MOBILE: natural flow below the center column
+         * DESKTOP: fixed right panel as before
+         */}
+        <div className="flex flex-col lg:overflow-hidden bg-card/10 border-t border-white/5 lg:border-t-0">
           <div className="p-3 border-b border-white/5 space-y-3">
             <AIAdvisorBox type={optionType} strike={selectedStrike} market={selectedMarket} expiryDays={selectedExpiry.daysLeft} />
             <button onClick={handleBuy}
-              className={cn('w-full py-3 rounded-xl font-syne font-bold text-white text-sm transition-all',
+              className={cn('w-full py-3 rounded-xl font-syne font-bold text-white text-sm transition-all min-h-[48px]',
                 optionType === 'CALL' ? 'btn-call' : 'btn-put'
               )}>
               Buy {optionType} — {totalPremium} SUI
@@ -446,7 +544,7 @@ export default function TradePage() {
             {positions.length > 0 && <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">{positions.length}</span>}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="lg:flex-1 lg:overflow-y-auto">
             <div className="px-3 py-2 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-profit status-pulse" />
               <span className="text-xs font-mono text-text-secondary">OPEN</span>
@@ -513,7 +611,7 @@ export default function TradePage() {
                             },
                           })
                         }}
-                        className="w-5 h-5 rounded bg-white/5 hover:bg-danger/20 hover:text-danger flex items-center justify-center transition-colors"
+                        className="w-8 h-8 rounded bg-white/5 hover:bg-danger/20 hover:text-danger flex items-center justify-center transition-colors"
                       ><X size={10} /></button>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-xs font-mono">
@@ -527,9 +625,9 @@ export default function TradePage() {
               </div>
             )}
 
-            <div className="mt-3 px-2">
+            <div className="mt-3 px-2 pb-4">
               <button onClick={() => setShowExpired(!showExpired)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-mono text-text-secondary hover:text-white transition-colors">
+                className="w-full flex items-center gap-2 px-2 py-2 text-xs font-mono text-text-secondary hover:text-white transition-colors min-h-[40px]">
                 <div className="w-1.5 h-1.5 rounded-full bg-text-secondary" />
                 EXPIRED
                 <ChevronRight size={10} className={cn('ml-auto transition-transform', showExpired && 'rotate-90')} />
@@ -566,6 +664,7 @@ export default function TradePage() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )
