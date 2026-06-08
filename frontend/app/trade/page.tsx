@@ -466,11 +466,25 @@ export default function TradePage() {
                       className="w-12 bg-transparent text-center font-mono text-white text-sm focus:outline-none" />
                     <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Plus size={12} /></button>
                   </div>
-                  <div className="w-full sm:flex-1 grid grid-cols-3 gap-3 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
-                    <div><div className="text-text-secondary text-xs font-mono mb-0.5">Premium</div><div className="text-white font-bold text-sm font-mono">{totalPremium} SUI</div></div>
-                    <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Loss</div><div className="text-danger font-bold text-sm font-mono">{totalPremium} SUI</div></div>
-                    <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Profit</div><div className="text-profit font-bold text-sm font-mono">Unlimited</div></div>
-                  </div>
+                  <div className="flex-1 space-y-2">
+  <div className="grid grid-cols-3 gap-3 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
+    <div><div className="text-text-secondary text-xs font-mono mb-0.5">Premium</div><div className="text-white font-bold text-sm font-mono">{totalPremium} SUI</div></div>
+    <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Loss</div><div className="text-danger font-bold text-sm font-mono">{totalPremium} SUI</div></div>
+    <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Profit</div><div className="text-profit font-bold text-sm font-mono">Unlimited</div></div>
+  </div>
+  {totalPremium > 0.5 && (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-400/10 border border-yellow-400/30">
+      <span className="text-yellow-400 text-sm">⚠️</span>
+      <span className="text-yellow-400 font-mono text-xs">High premium! Make sure you understand the risk before buying.</span>
+    </div>
+  )}
+  {totalPremium > 1 && (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-danger/10 border border-danger/30">
+      <span className="text-danger text-sm">🚨</span>
+      <span className="text-danger font-mono text-xs">Very high premium ({totalPremium} SUI). Consider reducing quantity.</span>
+    </div>
+  )}
+</div>
                 </div>
               </div>
             ) : (
