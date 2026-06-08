@@ -27,7 +27,7 @@ export function useTransactionHistory() {
 
   const transactions: TxRecord[] = (data?.data ?? []).map((tx) => {
     const balanceChange = tx.balanceChanges?.find(
-      b => b.owner && 'AddressOwner' in b.owner &&
+     b => b.owner && typeof b.owner === 'object' && 'AddressOwner' in (b.owner as object) &&
       (b.owner as any).AddressOwner === account?.address
     )
     const amount = parseInt(balanceChange?.amount ?? '0') / 1_000_000_000
