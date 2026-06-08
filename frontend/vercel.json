@@ -2,14 +2,5 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "env": {
-    "NEXT_PUBLIC_SUI_NETWORK": "testnet",
-    "NEXT_PUBLIC_PACKAGE_ID": "@NEXT_PUBLIC_PACKAGE_ID",
-    "NEXT_PUBLIC_LIQUIDITY_POOL_ID": "@NEXT_PUBLIC_LIQUIDITY_POOL_ID",
-    "NEXT_PUBLIC_SETTLEMENT_REGISTRY_ID": "@NEXT_PUBLIC_SETTLEMENT_REGISTRY_ID",
-    "NEXT_PUBLIC_ORDER_BOOK_ID": "@NEXT_PUBLIC_ORDER_BOOK_ID",
-    "NEXT_PUBLIC_TREASURY_ID": "@NEXT_PUBLIC_TREASURY_ID",
-    "ANTHROPIC_API_KEY": "@ANTHROPIC_API_KEY"
-  }
+  "installCommand": "npm install"
 }
