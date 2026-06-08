@@ -217,7 +217,7 @@ export default function LandingPage() {
             View all markets <ChevronRight size={16} />
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {marketsWithPrices.map((market) => (
             <MarketCard key={market.id} market={market} />
           ))}
@@ -228,7 +228,7 @@ export default function LandingPage() {
       <section className="py-20 bg-card/30 border-y border-white/5">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
           <h2 className="font-syne font-bold text-4xl text-center text-white mb-16">How It Works</h2>
-          <div className="grid grid-cols-3 gap-8 relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
             <div className="absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
             {[
               { step: 1, title: 'Choose Option', desc: 'Select CALL or PUT options on your favorite Sui assets. Pick your strike price and expiry.', icon: '🎯' },
@@ -251,7 +251,7 @@ export default function LandingPage() {
       {/* Why Volara */}
       <section className="py-20 max-w-[1440px] mx-auto px-4 md:px-8">
         <h2 className="font-syne font-bold text-4xl text-white mb-12">Why Volara?</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {[
             { icon: <Brain className="text-primary" size={24} />, title: 'AI Powered Pricing', desc: 'Volara AI-generated fair value estimates and probability analysis on every trade. Know your risk before you trade.' },
             { icon: <Zap className="text-profit" size={24} />, title: 'Instant Settlement', desc: "Sui's sub-second finality means options settle the moment they expire. No waiting, no custodians." },
@@ -331,7 +331,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-white/5 py-12 bg-card/20">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-5 gap-8 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-10">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <Zap size={20} className="text-primary" />
@@ -374,3 +374,6 @@ export default function LandingPage() {
     </div>
   )
 }
+
+
+
