@@ -86,11 +86,11 @@ function MarketCard({ market }: { market: typeof MARKETS[0] }) {
           <div className="font-mono text-sm text-white">{formatCurrency(market.volume24h)}</div>
         </div>
       </div>
-      <Link href="/trade">
-        <button className="w-full py-2 rounded-xl border border-primary/30 text-primary text-sm font-mono group-hover:bg-primary/10 group-hover:border-primary transition-all flex items-center justify-center gap-2">
-          Trade Now <ArrowRight size={14} />
-        </button>
-      </Link>
+    <Link href={`/trade?market=${market.id}`}>
+  <button className="w-full py-2 rounded-xl border border-primary/30 text-primary text-sm font-mono group-hover:bg-primary/10 group-hover:border-primary transition-all flex items-center justify-center gap-2">
+    Trade Now <ArrowRight size={14} />
+  </button>
+</Link>
     </div>
   )
 }
@@ -315,10 +315,10 @@ export default function LandingPage() {
               Get real-time insights, risk analysis, and market explanations from Volara AI. Every trade comes with probability estimates, breakeven calculations, and plain-English explanations.
             </p>
             <Link href="/trade">
-              <button className="px-6 py-3 rounded-xl bg-primary/15 border border-primary/30 text-primary font-mono text-sm hover:bg-primary/25 transition-all">
-                Explore AI Insights →
-              </button>
-            </Link>
+  <button className="px-6 py-3 rounded-xl bg-primary/15 border border-primary/30 text-primary font-mono text-sm hover:bg-primary/25 transition-all">
+    Explore AI Insights →
+  </button>
+</Link>
           </div>
           <div className="space-y-3 md:space-y-4">
             {[
