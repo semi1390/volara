@@ -1,4 +1,4 @@
-'use client'
+
 
 import './globals.css'
 import { useState, useEffect } from 'react'
@@ -44,6 +44,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   ⚠️ Testnet — Experimental Software
 </div>
               <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: '#1A1A2E',
+                    color: '#FFFFFF',
+                    border: '1px solid rgba(99,102,241,0.3)',
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    fontSize: '13px',
+                  },
+                }}
+              />
+              </div>
                 position="bottom-right"
                 toastOptions={{
                   style: {
