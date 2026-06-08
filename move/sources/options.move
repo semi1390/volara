@@ -11,6 +11,7 @@ module volara::options {
     // ===== Constants =====
     const CALL: u8 = 0;
     const PUT: u8 = 1;
+    const MIN_PREMIUM_MIST: u64 = 1_000_000; // 0.001 SUI minimum premium
 
     // ===== Errors =====
     const EInvalidOptionType: u64 = 0;
@@ -21,6 +22,7 @@ module volara::options {
     const EInsufficientPremium: u64 = 5;
     const EInvalidStrike: u64 = 6;
     const EInvalidQuantity: u64 = 7;
+    const EPremiumTooLow: u64 = 8;
 
     // ===== Events =====
     public struct OptionBoughtEvent has copy, drop {
@@ -48,7 +50,7 @@ module volara::options {
         quantity: u64,
         owner: address,
         is_settled: bool,
-        market: vector<u8>, // e.g. "SUI/USDC"
+        market: vector<u8>,
     }
 
     // ===== Public Functions =====
@@ -66,15 +68,28 @@ module volara::options {
         assert!(strike_price > 0, EInvalidStrike);
         assert!(quantity > 0, EInvalidQuantity);
 
+        // Pool must not be paused
+        assert!(!liquidity_pool::is_paused(pool), 0);
+
         let payment_amount = coin::value(&payment);
+
+        // Enforce minimum premium on-chain
+        assert!(payment_amount >= MIN_PREMIUM_MIST, EPremiumTooLow);
+
         let fee = fees::calculate_fee(payment_amount);
         let premium = payment_amount - fee;
         assert!(premium > 0, EInsufficientPremium);
+
+        // Check utilization cap before accepting
+        liquidity_pool::check_utilization(pool, premium);
 
         // Split fee from payment
         let mut payment_mut = payment;
         let fee_coin = coin::split(&mut payment_mut, fee, ctx);
         fees::collect_fee_coin(fee_coin, ctx);
+
+        // Track exposure
+        liquidity_pool::add_exposure(pool, premium);
 
         // Rest goes to pool
         liquidity_pool::collect_premium(pool, payment_mut);
@@ -152,8 +167,19 @@ module volara::options {
 
     public fun call_type(): u8 { CALL }
     public fun put_type(): u8 { PUT }
+
     public(package) fun destroy_option(option: OptionPosition) {
-    let OptionPosition { id, option_type: _, strike_price: _, expiry_timestamp: _, premium_paid: _, quantity: _, owner: _, is_settled: _, market: _ } = option;
-    object::delete(id);
-}
+        let OptionPosition {
+            id,
+            option_type: _,
+            strike_price: _,
+            expiry_timestamp: _,
+            premium_paid: _,
+            quantity: _,
+            owner: _,
+            is_settled: _,
+            market: _,
+        } = option;
+        object::delete(id);
+    }
 }

@@ -2,157 +2,155 @@ module volara::settlement {
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{Self, TxContext};
     use sui::transfer;
-    use sui::event;
+    use sui::coin::{Self, Coin};
+    use sui::sui::SUI;
+    use sui::balance::{Self, Balance};
     use sui::table::{Self, Table};
-    use volara::options::{Self, OptionPosition};
-    use volara::liquidity_pool::{Self, LiquidityPool};
-    use volara::fees;
+    use sui::event;
 
     // ===== Errors =====
-    const EOptionNotExpired: u64 = 0;
-    const EAlreadySettled: u64 = 1;
-    const ENoPayoutDue: u64 = 2;
-    const ENotOwner: u64 = 3;
-    const EInvalidPrice: u64 = 4;
+    const EInsufficientBalance: u64 = 0;
+    const EInsufficientShares: u64 = 1;
+    const EZeroAmount: u64 = 2;
+    const EPoolEmpty: u64 = 3;
 
     // ===== Events =====
-    public struct SettlementEvent has copy, drop {
-        option_id: ID,
-        owner: address,
-        settlement_price: u64,
-        payout: u64,
-        is_itm: bool,
+    public struct DepositEvent has copy, drop {
+        depositor: address,
+        amount: u64,
+        shares_minted: u64,
     }
 
-    public struct BatchSettlementEvent has copy, drop {
-        count: u64,
-        total_payout: u64,
+    public struct WithdrawEvent has copy, drop {
+        withdrawer: address,
+        amount: u64,
+        shares_burned: u64,
     }
 
     // ===== Structs =====
-    public struct SettlementRegistry has key {
+    public struct LiquidityPool has key {
         id: UID,
-        settled_options: Table<ID, u64>, // option_id -> payout
-        total_settled: u64,
-        total_payout: u64,
+        balance: Balance<SUI>,
+        total_shares: u64,
+        total_premiums_collected: u64,
+        lp_shares: Table<address, u64>,
+        admin: address,
+    }
+
+    public struct AdminCap has key, store {
+        id: UID,
     }
 
     // ===== Init =====
     fun init(ctx: &mut TxContext) {
-        let registry = SettlementRegistry {
+        let admin_cap = AdminCap { id: object::new(ctx) };
+        let pool = LiquidityPool {
             id: object::new(ctx),
-            settled_options: table::new(ctx),
-            total_settled: 0,
-            total_payout: 0,
+            balance: balance::zero<SUI>(),
+            total_shares: 0,
+            total_premiums_collected: 0,
+            lp_shares: table::new(ctx),
+            admin: tx_context::sender(ctx),
         };
-        transfer::share_object(registry);
+        transfer::share_object(pool);
+        transfer::transfer(admin_cap, tx_context::sender(ctx));
     }
 
     // ===== Public Functions =====
+    public entry fun deposit(
+        pool: &mut LiquidityPool,
+        coin: Coin<SUI>,
+        ctx: &mut TxContext
+    ) {
+        let amount = coin::value(&coin);
+        assert!(amount > 0, EZeroAmount);
 
-    /// Calculate payout for an option given settlement price
-    public fun calculate_payout(
-        option: &OptionPosition,
-        settlement_price: u64
-    ): u64 {
-        let strike = options::get_strike_price(option);
-        let qty = options::get_quantity(option);
-        let option_type = options::get_option_type(option);
-
-        // CALL payout = max(0, settlement_price - strike) * qty
-        // PUT payout = max(0, strike - settlement_price) * qty
-        if (option_type == options::call_type()) {
-            if (settlement_price > strike) {
-                (settlement_price - strike) * qty
-            } else {
-                0
-            }
+        let shares_to_mint = if (pool.total_shares == 0 || balance::value(&pool.balance) == 0) {
+            amount
         } else {
-            // PUT
-            if (strike > settlement_price) {
-                (strike - settlement_price) * qty
-            } else {
-                0
-            }
+            (amount * pool.total_shares) / balance::value(&pool.balance)
+        };
+
+        let depositor = tx_context::sender(ctx);
+        balance::join(&mut pool.balance, coin::into_balance(coin));
+        pool.total_shares = pool.total_shares + shares_to_mint;
+
+        if (table::contains(&pool.lp_shares, depositor)) {
+            let current = table::borrow_mut(&mut pool.lp_shares, depositor);
+            *current = *current + shares_to_mint;
+        } else {
+            table::add(&mut pool.lp_shares, depositor, shares_to_mint);
+        };
+
+        event::emit(DepositEvent {
+            depositor,
+            amount,
+            shares_minted: shares_to_mint,
+        });
+    }
+
+    public entry fun withdraw(
+        pool: &mut LiquidityPool,
+        shares_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(table::contains(&pool.lp_shares, sender), EInsufficientShares);
+
+        let user_shares = *table::borrow(&pool.lp_shares, sender);
+        assert!(user_shares >= shares_amount, EInsufficientShares);
+        assert!(pool.total_shares > 0, EPoolEmpty);
+
+        let pool_balance = balance::value(&pool.balance);
+        let amount_to_withdraw = (shares_amount * pool_balance) / pool.total_shares;
+        assert!(amount_to_withdraw > 0, EZeroAmount);
+
+        let shares_ref = table::borrow_mut(&mut pool.lp_shares, sender);
+        *shares_ref = *shares_ref - shares_amount;
+        pool.total_shares = pool.total_shares - shares_amount;
+
+        let withdrawn = balance::split(&mut pool.balance, amount_to_withdraw);
+        transfer::public_transfer(coin::from_balance(withdrawn, ctx), sender);
+
+        event::emit(WithdrawEvent {
+            withdrawer: sender,
+            amount: amount_to_withdraw,
+            shares_burned: shares_amount,
+        });
+    }
+
+    public fun get_pool_balance(pool: &LiquidityPool): u64 {
+        balance::value(&pool.balance)
+    }
+
+    public fun get_lp_share(pool: &LiquidityPool, addr: address): u64 {
+        if (table::contains(&pool.lp_shares, addr)) {
+            *table::borrow(&pool.lp_shares, addr)
+        } else {
+            0
         }
     }
 
-    /// Settle a single option using a provided price (oracle price in production)
-    public entry fun settle_option(
-        registry: &mut SettlementRegistry,
+    public fun get_total_shares(pool: &LiquidityPool): u64 {
+        pool.total_shares
+    }
+
+    // Internal: pay out from pool (called by settlement)
+    public(package) fun pay_out(
         pool: &mut LiquidityPool,
-        option: OptionPosition,
-        settlement_price: u64,
-        current_timestamp: u64,
+        amount: u64,
+        recipient: address,
         ctx: &mut TxContext
     ) {
-        assert!(settlement_price > 0, EInvalidPrice);
-        assert!(!options::is_settled(&option), EAlreadySettled);
-
-        let expiry = options::get_expiry(&option);
-        assert!(current_timestamp >= expiry, EOptionNotExpired);
-
-        let owner = options::get_owner(&option);
-        let sender = tx_context::sender(ctx);
-        assert!(owner == sender, ENotOwner);
-
-        let payout = calculate_payout(&option, settlement_price);
-       let option_id_ref = *sui::object::borrow_id(&option);
-
-        let is_itm = payout > 0;
-
-        if (payout > 0) {
-            // Deduct settlement fee
-            let fee = fees::calculate_settlement_fee(payout);
-            let net_payout = payout - fee;
-
-            // Pay out from pool
-            liquidity_pool::pay_out(pool, net_payout, owner, ctx);
-
-            registry.settled_options.add(option_id_ref, net_payout);
-            registry.total_payout = registry.total_payout + net_payout;
-        } else {
-            registry.settled_options.add(option_id_ref, 0);
-        };
-
-        registry.total_settled = registry.total_settled + 1;
-
-        event::emit(SettlementEvent {
-            option_id: option_id_ref,
-            owner,
-            settlement_price,
-            payout,
-            is_itm,
-        });
-
-        // Burn the option object
-     options::destroy_option(option);
+        assert!(balance::value(&pool.balance) >= amount, EInsufficientBalance);
+        let payout = balance::split(&mut pool.balance, amount);
+        transfer::public_transfer(coin::from_balance(payout, ctx), recipient);
     }
 
-    /// Claim payout for an already-settled option (alternative flow)
-    public entry fun claim_payout(
-        registry: &SettlementRegistry,
-        pool: &mut LiquidityPool,
-        option_id: ID,
-        ctx: &mut TxContext
-    ) {
-        assert!(table::contains(&registry.settled_options, option_id), ENoPayoutDue);
-        let payout = *table::borrow(&registry.settled_options, option_id);
-        assert!(payout > 0, ENoPayoutDue);
-
-        liquidity_pool::pay_out(pool, payout, tx_context::sender(ctx), ctx);
-    }
-
-    // Getters
-    public fun get_total_settled(registry: &SettlementRegistry): u64 {
-        registry.total_settled
-    }
-
-    public fun get_total_payout(registry: &SettlementRegistry): u64 {
-        registry.total_payout
-    }
-
-    public fun has_been_settled(registry: &SettlementRegistry, option_id: ID): bool {
-        table::contains(&registry.settled_options, option_id)
+    // Internal: collect premium into pool
+    public(package) fun collect_premium(pool: &mut LiquidityPool, coin: Coin<SUI>) {
+        let amount = coin::value(&coin);
+        pool.total_premiums_collected = pool.total_premiums_collected + amount;
+        balance::join(&mut pool.balance, coin::into_balance(coin));
     }
 }
