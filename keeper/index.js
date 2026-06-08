@@ -19,7 +19,6 @@ const PYTH_ENDPOINT = 'https://hermes-beta.pyth.network'
 
 // Pyth config
 const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
-const PYTH_ENDPOINT = 'https://hermes.pyth.network'
 const MAX_PRICE_AGE_SECONDS = 60 // reject prices older than 60 seconds
 const SUI_CLOCK_OBJECT = '0x6' // Sui system clock object
 
@@ -72,8 +71,9 @@ const res = await fetch(url, {
   method: 'GET',
   headers: { accept: 'application/json' }
 })
-    
-    const data = await res.json()
+if (!res.ok) throw new Error(`Pyth HTTP error: ${res.status}`)
+
+const data = await res.json()
     const parsed = data.parsed?.[0]
     if (!parsed) throw new Error('No price data in Pyth response')
 
