@@ -15,6 +15,7 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const CHECK_INTERVAL_MS = 60_000 // 60 seconds
 const LOG_FILE = path.join(__dirname, 'keeper.log')
+const PYTH_ENDPOINT = 'https://hermes-beta.pyth.network'
 
 // Pyth config
 const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
@@ -64,10 +65,13 @@ async function sendTelegram(msg) {
 async function getSuiPrice() {
   try {
     const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
-    const url = `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${SUI_USD_FEED}`
-    
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Pyth HTTP error: ${res.status}`)
+   // For Sui Testnet use hermes-beta, for mainnet use hermes
+const url = `https://hermes-beta.pyth.network/v2/updates/price/latest?ids[]=${SUI_USD_FEED}&parsed=true`
+
+const res = await fetch(url, {
+  method: 'GET',
+  headers: { accept: 'application/json' }
+})
     
     const data = await res.json()
     const parsed = data.parsed?.[0]
