@@ -1,0 +1,15 @@
+{
+  "name": "volara-keeper",
+  "version": "1.0.0",
+  "description": "Volara options settlement keeper bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+"dependencies": {
+  "@mysten/sui": "^1.0.0",
+  "@pythnetwork/pyth-sui-js": "^1.0.0",
+  "dotenv": "^16.0.0"
+}
+}

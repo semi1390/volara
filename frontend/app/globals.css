@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #6366F1;
+  --profit: #10B981;
+  --danger: #EF4444;
+  --bg: #0F0F1A;
+  --card: #1A1A2E;
+  --border: rgba(255,255,255,0.08);
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --glow-indigo: rgba(99,102,241,0.35);
+  --glow-green: rgba(16,185,129,0.25);
+  --glow-red: rgba(239,68,68,0.25);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0F0F1A;
+  color: #FFFFFF;
+  font-family: 'IBM Plex Mono', monospace;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Syne', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0F0F1A; }
+::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.4); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.7); }
+
+/* Glow effects */
+.glow-indigo { box-shadow: 0 0 20px rgba(99,102,241,0.35); }
+.glow-green { box-shadow: 0 0 20px rgba(16,185,129,0.25); }
+.glow-red { box-shadow: 0 0 20px rgba(239,68,68,0.25); }
+
+/* Card base */
+.card {
+  background: #1A1A2E;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+}
+
+/* Hover lift */
+.hover-lift {
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Number flash animations */
+@keyframes flashGreen {
+  0% { color: #10B981; }
+  100% { color: inherit; }
+}
+@keyframes flashRed {
+  0% { color: #EF4444; }
+  100% { color: inherit; }
+}
+.flash-green { animation: flashGreen 0.5s ease-out; }
+.flash-red { animation: flashRed 0.5s ease-out; }
+
+/* Grid background */
+.bg-grid {
+  background-image: radial-gradient(rgba(99,102,241,0.12) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366F1, #FFFFFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer skeleton */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1A1A2E 25%, #252540 50%, #1A1A2E 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Pill toggle */
+.pill-active-call {
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.1));
+  border-color: #10B981;
+  color: #10B981;
+}
+.pill-active-put {
+  background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1));
+  border-color: #EF4444;
+  color: #EF4444;
+}
+
+/* AI box */
+.ai-box {
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05));
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+}
+
+/* Buy button */
+.btn-call {
+  background: linear-gradient(135deg, #10B981, #059669);
+  box-shadow: 0 0 20px rgba(16,185,129,0.3);
+}
+.btn-call:hover {
+  box-shadow: 0 0 30px rgba(16,185,129,0.5);
+}
+.btn-put {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  box-shadow: 0 0 20px rgba(239,68,68,0.3);
+}
+.btn-put:hover {
+  box-shadow: 0 0 30px rgba(239,68,68,0.5);
+}
+
+/* Mark price pulse */
+@keyframes markPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(99,102,241,0.4); }
+  50% { box-shadow: 0 0 16px rgba(99,102,241,0.8); }
+}
+.mark-price-pulse {
+  animation: markPulse 2s ease-in-out infinite;
+}
+
+/* Countdown near expiry glow intensify */
+@keyframes countdownGlow {
+  0%, 100% { text-shadow: 0 0 10px rgba(99,102,241,0.5); }
+  50% { text-shadow: 0 0 25px rgba(99,102,241,1), 0 0 40px rgba(99,102,241,0.5); }
+}
+.countdown-glow {
+  animation: countdownGlow 1s ease-in-out infinite;
+}
+
+/* Status pulse */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+.status-pulse {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+/* Trade slide in */
+@keyframes tradeSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.trade-slide-in {
+  animation: tradeSlideIn 0.2s ease-out;
+}
+
+/* Liquidity wave */
+@keyframes wave {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
