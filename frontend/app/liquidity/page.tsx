@@ -143,12 +143,16 @@ export default function LiquidityPage() {
     signAndExecute(
       { transaction: tx as any },
       {
-        onSuccess: () => {
-          toast.dismiss()
-          toast.success('Deposited successfully! 🎉')
-          setAmount('')
-          refetchPool()
-        },
+    onSuccess: (result) => {
+  toast.dismiss()
+  if ((result as any).effects?.status?.status === 'failure') {
+    toast.error(`Deposit failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown error'}`)
+    return
+  }
+  toast.success('Deposited successfully! 🎉')
+  setAmount('')
+  refetchPool()
+},
         onError: (e) => {
           toast.dismiss()
           const msg = e.message || ''
@@ -186,12 +190,16 @@ export default function LiquidityPage() {
     signAndExecute(
       { transaction: tx as any },
       {
-        onSuccess: () => {
-          toast.dismiss()
-          toast.success('Withdrawn successfully! 🎉')
-          setAmount('')
-          refetchPool()
-        },
+  onSuccess: (result) => {
+  toast.dismiss()
+  if ((result as any).effects?.status?.status === 'failure') {
+    toast.error(`Withdraw failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown error'}`)
+    return
+  }
+  toast.success('Withdrawn successfully! 🎉')
+  setAmount('')
+  refetchPool()
+},
         onError: (e) => {
           toast.dismiss()
           const msg = e.message || ''
