@@ -26,9 +26,7 @@ function CountdownTimer({ targetDate }: { targetDate: Date }) {
 
   const totalSeconds = time.days * 86400 + time.hours * 3600 + time.minutes * 60 + time.seconds
   const isUrgent = totalSeconds < 3600
-
   const pad = (n: number) => n.toString().padStart(2, '0')
-
   const units = [
     { label: 'DAYS', value: pad(time.days) },
     { label: 'HOURS', value: pad(time.hours) },
@@ -43,7 +41,6 @@ function CountdownTimer({ targetDate }: { targetDate: Date }) {
         {['DAYS', 'HOURS', 'MINUTES', 'SECONDS'].map((label, i) => (
           <div key={label} className="flex items-center gap-2 md:gap-4">
             <div className="text-center">
-              {/* Responsive font size: smaller on mobile */}
               <div className="font-mono font-bold text-5xl md:text-8xl leading-none tabular-nums text-white">00</div>
               <div className="text-text-secondary font-mono text-[10px] md:text-xs mt-1 md:mt-2 tracking-widest">{label}</div>
             </div>
@@ -61,7 +58,6 @@ function CountdownTimer({ targetDate }: { targetDate: Date }) {
         {units.map((unit, i) => (
           <div key={unit.label} className="flex items-center gap-2 md:gap-4">
             <div className="text-center">
-              {/* text-5xl on mobile → text-8xl on desktop */}
               <div className={cn('font-mono font-bold text-5xl md:text-8xl leading-none tabular-nums', isUrgent ? 'text-danger' : 'text-white')}>
                 {unit.value}
               </div>
@@ -95,11 +91,14 @@ export default function SettlementPage() {
   }
   const nextSettlement = getNextFriday()
 
+  // Contract size = 100 for SUI market (matching on-chain)
+  const CONTRACT_SIZE = 100
+
   const expectedPayouts = EXPIRING_POSITIONS.map(pos => {
     const payout = pos.type === 'CALL'
-      ? Math.max(0, settlementPrice - pos.strike) * pos.qty * 100
-      : Math.max(0, pos.strike - settlementPrice) * pos.qty * 100
-    return { ...pos, calculatedPayout: +payout.toFixed(2) }
+      ? Math.max(0, settlementPrice - pos.strike) * pos.qty * CONTRACT_SIZE
+      : Math.max(0, pos.strike - settlementPrice) * pos.qty * CONTRACT_SIZE
+    return { ...pos, calculatedPayout: +payout.toFixed(4) }
   })
 
   const totalCalculated = expectedPayouts.reduce((sum, p) => sum + p.calculatedPayout, 0)
@@ -117,17 +116,19 @@ export default function SettlementPage() {
           </div>
         </div>
 
-        {/* Main grid: single col on mobile, 2-col on md+ */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_360px] gap-6 md:gap-8">
 
           {/* LEFT */}
           <div className="space-y-6 md:space-y-6">
 
-            {/* Expiring Positions: 1-col on mobile, 3-col on md+ */}
+            {/* Expiring Positions — labeled as example */}
             <div>
-              <h2 className="font-syne font-bold text-xl md:text-2xl text-white mb-4 md:mb-5">
+              <h2 className="font-syne font-bold text-xl md:text-2xl text-white mb-1">
                 Positions Expiring This Week
               </h2>
+              <p className="text-yellow-400/70 font-mono text-xs mb-4">
+                ⚠️ Example positions — connect wallet to see your real positions
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {expectedPayouts.map(pos => {
                   const isITM = pos.calculatedPayout > 0
@@ -149,14 +150,14 @@ export default function SettlementPage() {
                           <span className="text-white">${settlementPrice.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-secondary">Quantity</span>
-                          <span className="text-white">{pos.qty}</span>
+                          <span className="text-text-secondary">Qty × Size</span>
+                          <span className="text-white">{pos.qty} × {CONTRACT_SIZE}</span>
                         </div>
                       </div>
                       <div className={cn('p-3 rounded-xl border', isITM ? 'border-profit/20 bg-profit/10' : 'border-white/10 bg-white/3')}>
                         <div className="text-text-secondary text-xs font-mono mb-1">Expected Payout</div>
                         <div className={cn('font-mono font-bold text-lg', isITM ? 'text-profit' : 'text-text-secondary')}>
-                          {isITM ? '+' : ''}{pos.calculatedPayout.toFixed(2)} USDC
+                          {isITM ? '+' : ''}{pos.calculatedPayout.toFixed(4)} SUI
                         </div>
                         <div className={cn('text-xs font-mono mt-1', isITM ? 'text-profit/70' : 'text-text-secondary/50')}>
                           {isITM ? 'IN THE MONEY ✓' : 'OUT OF MONEY'}
@@ -168,9 +169,12 @@ export default function SettlementPage() {
               </div>
             </div>
 
-            {/* Settlement History — horizontal scroll on mobile */}
+            {/* Settlement History — labeled as example */}
             <div>
-              <h2 className="font-syne font-bold text-xl md:text-2xl text-white mb-4 md:mb-5">Settlement History</h2>
+              <h2 className="font-syne font-bold text-xl md:text-2xl text-white mb-1">Settlement History</h2>
+              <p className="text-yellow-400/70 font-mono text-xs mb-4">
+                ⚠️ Example data — real settlement history will appear here after options expire
+              </p>
               <div className="card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[480px]">
@@ -194,7 +198,7 @@ export default function SettlementPage() {
                             </span>
                           </td>
                           <td className={cn('px-3 md:px-4 py-3 font-mono text-sm font-bold whitespace-nowrap', record.payout > 0 ? 'text-profit' : 'text-text-secondary')}>
-                            {record.payout > 0 ? `+${record.payout.toFixed(2)}` : '0.00'} USDC
+                            {record.payout > 0 ? `+${record.payout.toFixed(4)}` : '0.0000'} SUI
                           </td>
                           <td className="px-3 md:px-4 py-3">
                             <a href="#" className="flex items-center gap-1 font-mono text-xs text-primary hover:text-primary/70 transition-colors whitespace-nowrap">
@@ -211,12 +215,11 @@ export default function SettlementPage() {
           </div>
 
           {/* RIGHT — Payout Calculator + Claim */}
-          {/* On mobile this naturally stacks below the left column */}
           <div className="space-y-4 md:space-y-5">
 
-            {/* Payout Calculator */}
             <div className="card p-4 md:p-5">
-              <h3 className="font-syne font-semibold text-white mb-4 md:mb-5">Payout Calculator</h3>
+              <h3 className="font-syne font-semibold text-white mb-1">Payout Calculator</h3>
+              <p className="text-text-secondary font-mono text-xs mb-4">Based on {CONTRACT_SIZE}x contract size per position</p>
               <div className="mb-4">
                 <label className="text-text-secondary text-xs font-mono block mb-2">Expected Price at Expiry</label>
                 <input
@@ -246,7 +249,7 @@ export default function SettlementPage() {
                       {pos.type} ${pos.strike.toFixed(2)}
                     </span>
                     <span className={cn('font-bold', pos.calculatedPayout > 0 ? 'text-profit' : 'text-text-secondary')}>
-                      {pos.calculatedPayout > 0 ? '+' : ''}{pos.calculatedPayout.toFixed(2)} USDC
+                      {pos.calculatedPayout > 0 ? '+' : ''}{pos.calculatedPayout.toFixed(4)} SUI
                     </span>
                   </div>
                 ))}
@@ -254,15 +257,14 @@ export default function SettlementPage() {
               <div className="border-t border-white/10 pt-4">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-text-secondary text-xs font-mono">Total Expected Payout</span>
-                  <span className="text-xs font-mono text-text-secondary">Across 1 Position</span>
+                  <span className="text-xs font-mono text-text-secondary">Example only</span>
                 </div>
                 <div className={cn('font-mono font-bold text-2xl md:text-3xl', totalCalculated > 0 ? 'text-profit' : 'text-text-secondary')}>
-                  {totalCalculated > 0 ? '+' : ''}{totalCalculated.toFixed(2)} USDC
+                  {totalCalculated > 0 ? '+' : ''}{totalCalculated.toFixed(4)} SUI
                 </div>
               </div>
             </div>
 
-            {/* Claim Button */}
             {account ? (
               <button
                 onClick={() => {
@@ -280,13 +282,13 @@ export default function SettlementPage() {
               </div>
             )}
 
-            {/* Settlement Info */}
             <div className="card p-4 md:p-5 space-y-3 text-xs font-mono">
               <div className="text-text-secondary font-syne font-semibold text-sm mb-2">Settlement Info</div>
               {[
                 ['Settlement Type', 'Cash-settled'],
                 ['Oracle', 'Pyth Network'],
                 ['Settlement Time', '12:00 UTC Friday'],
+                ['Contract Size', `${CONTRACT_SIZE}x per contract`],
                 ['Gas Fee', '~0.001 SUI'],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between">
@@ -296,7 +298,6 @@ export default function SettlementPage() {
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </div>

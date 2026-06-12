@@ -226,10 +226,10 @@ export default function LandingPage() {
       <section className="py-6 border-y border-white/5 bg-card/50 backdrop-blur-sm">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
           {[
-            { label: 'Total Volume', value: PLATFORM_STATS.totalVolume, prefix: '$' },
-            { label: 'Open Interest', value: PLATFORM_STATS.openInterest, prefix: '$' },
-            { label: 'Total Liquidity', value: PLATFORM_STATS.totalLiquidity, prefix: '$' },
-            { label: 'Active Traders', value: PLATFORM_STATS.activeTraders, prefix: '' },
+           { label: 'Target Volume', value: PLATFORM_STATS.totalVolume, prefix: '$' },
+{ label: 'Target OI', value: PLATFORM_STATS.openInterest, prefix: '$' },
+{ label: 'Target Liquidity', value: PLATFORM_STATS.totalLiquidity, prefix: '$' },
+{ label: 'Target Traders', value: PLATFORM_STATS.activeTraders, prefix: '' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-text-secondary text-xs font-mono mb-1 md:mb-2 uppercase tracking-wider">{stat.label}</div>
@@ -242,6 +242,9 @@ export default function LandingPage() {
       </section>
 
       {/* Featured Markets */}
+      <div className="text-center mt-3 text-yellow-400/50 font-mono text-xs">
+  Projected metrics at scale — testnet currently live
+</div>
       <section className="py-12 md:py-20 max-w-[1440px] mx-auto px-4 md:px-8">
         <div className="flex items-center justify-between mb-8 md:mb-10">
           <div>
@@ -406,6 +409,3 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
-  )
-}
