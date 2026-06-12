@@ -314,11 +314,15 @@ export default function PortfolioPage() {
                     signAndExecute(
                       { transaction: tx as any },
                       {
-                        onSuccess: () => {
-                          toast.dismiss()
-                          toast.success('Position closed!')
-                          setSelectedPosition(null)
-                        },
+                    onSuccess: (result) => {
+  toast.dismiss()
+  if ((result as any).effects?.status?.status === 'failure') {
+    toast.error(`Close failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown error'}`)
+    return
+  }
+  toast.success('Position closed!')
+  setSelectedPosition(null)
+},
                         onError: (e) => {
                           toast.dismiss()
                           toast.error(`Failed: ${e.message}`)
