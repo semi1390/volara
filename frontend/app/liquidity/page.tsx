@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Brain, AlertCircle } from 'lucide-react'
 import { POOL_STATS } from '@/lib/dummy-data'
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClientQuery } from '@mysten/dapp-kit'
-import { TransactionBlock } from '@mysten/sui.js/transactions'
+import { Transaction } from '@mysten/sui/transactions'
 import toast from 'react-hot-toast'
 import { getPoolAdvisorInsight } from '@/lib/claude'
 import { cn } from '@/lib/utils'
@@ -93,7 +93,7 @@ const realUtilization = realPoolBalance > 0
   const handleDeposit = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return }
-    const tx = new TransactionBlock()
+   const tx = new Transaction()
     const amountMist = Math.floor(parseFloat(amount) * 1_000_000_000)
     const [coin] = tx.splitCoins(tx.gas, [amountMist])
     tx.moveCall({
