@@ -10,7 +10,7 @@ export const MARKETS = [
     liquidity: 9200000,
     strikes: [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95],
     impliedVol: 68.4,
-    contractSize: 100,   // 1 contract = 100 SUI — ~$74 exposure at $0.74
+    contractSize: 5,   // testnet only — reduced for demo — ~$74 exposure at $0.74
   },
   {
     id: 'deep-usdc',
@@ -23,7 +23,7 @@ export const MARKETS = [
     liquidity: 4100000,
     strikes: [0.09, 0.10, 0.11, 0.12, 0.13, 0.14],
     impliedVol: 82.1,
-    contractSize: 1000,  // 1 contract = 1000 DEEP — ~$121 exposure at $0.121
+    contractSize:50,  // 1 contract = 1000 DEEP — ~$121 exposure at $0.121
   },
   {
     id: 'cetus-usdc',
@@ -36,7 +36,7 @@ export const MARKETS = [
     liquidity: 3800000,
     strikes: [0.14, 0.16, 0.18, 0.20, 0.22, 0.24],
     impliedVol: 74.9,
-    contractSize: 500,   // 1 contract = 500 CETUS — ~$128 exposure at $0.256
+    contractSize: 25,   // 1 contract = 500 CETUS — ~$128 exposure at $0.256
   },
 ]
 
