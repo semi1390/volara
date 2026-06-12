@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import { getPoolAdvisorInsight } from '@/lib/claude'
 import { cn } from '@/lib/utils'
 
+// Analytics chart data — labeled as projected/example
 const ANALYTICS_DATA = Array.from({ length: 12 }, (_, i) => ({
   date: ['May 14', 'May 21', 'May 28', 'Jun 4', 'Jun 11', 'Jun 18', 'Jun 25', 'Jul 2', 'Jul 9', 'Jul 16', 'Jul 23', 'Jul 30'][i],
   apy: [18, 22, 19, 25, 27, 24, 28, 30, 26, 22, 24, 22.4][i],
@@ -44,35 +45,68 @@ function RiskMeter({ level }: { level: 'LOW' | 'MED' | 'HIGH' }) {
 export default function LiquidityPage() {
   const account = useCurrentAccount()
   const { mutate: signAndExecute } = useSignAndExecuteTransaction()
-  const { data: poolData } = useSuiClientQuery('getObject', {
+
+  // Fetch pool data from chain
+  const { data: poolData, refetch: refetchPool } = useSuiClientQuery('getObject', {
     id: process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!,
     options: { showContent: true },
   })
 
-  const poolBalance = poolData?.data?.content?.dataType === 'moveObject'
-    ? (parseInt((poolData.data.content.fields as any)?.balance ?? '0') / 1_000_000_000).toFixed(2)
-    : '0.00'
+  // Fetch real wallet SUI balance
+  const { data: balanceData } = useSuiClientQuery(
+    'getBalance',
+    { owner: account?.address ?? '' },
+    { enabled: !!account?.address }
+  )
 
-  const totalShares = poolData?.data?.content?.dataType === 'moveObject'
-    ? (poolData.data.content.fields as any)?.total_shares ?? '0'
+  // Fetch user's LP shares using getDynamicFieldObject
+  const { data: userSharesData } = useSuiClientQuery(
+    'getDynamicFieldObject',
+    {
+      parentId: process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!,
+      name: { type: 'address', value: account?.address ?? '' },
+    },
+    { enabled: !!account?.address }
+  )
+
+  // Parse pool fields
+  const poolFields = poolData?.data?.content?.dataType === 'moveObject'
+    ? (poolData.data.content.fields as any)
+    : null
+
+  const poolBalanceMist = parseInt(poolFields?.balance ?? '0')
+  const poolBalance = (poolBalanceMist / 1_000_000_000).toFixed(2)
+  const totalPremiums = parseInt(poolFields?.total_premiums_collected ?? '0') / 1_000_000_000
+  const totalShares = parseInt(poolFields?.total_shares ?? '0')
+  const totalExposure = parseInt(poolFields?.total_exposure ?? '0')
+  const realPoolBalance = parseFloat(poolBalance)
+
+  // Real utilization from chain
+  const realUtilization = poolBalanceMist > 0
+    ? Math.min((totalExposure / poolBalanceMist) * 100, 100).toFixed(0)
     : '0'
 
+  // Real APY — only show if pool has real trading history
+  // Show '—' for fresh pool with no meaningful premium data
+  const hasRealHistory = totalPremiums > 0 && realPoolBalance > 0.1
+  const realAPY = hasRealHistory
+    ? Math.min(((totalPremiums / realPoolBalance) * 52 * 100), 200).toFixed(1)
+    : null
 
-    const totalPremiums = poolData?.data?.content?.dataType === 'moveObject'
-  ? parseInt((poolData.data.content.fields as any)?.total_premiums_collected ?? '0') / 1_000_000_000
-  : 0
+  // Real wallet balance
+  const walletBalance = balanceData
+    ? parseFloat((parseInt(balanceData.totalBalance) / 1_000_000_000).toFixed(4))
+    : 0
 
-const realPoolBalance = parseFloat(poolBalance)
+  // User's LP shares from chain
+  const userShares = userSharesData?.data?.content?.dataType === 'moveObject'
+    ? parseInt((userSharesData.data.content.fields as any)?.value ?? '0')
+    : 0
 
-// Real APY = (total premiums collected / pool balance) * 52 weeks * 100
-const realAPY = realPoolBalance > 0
-  ? Math.min(((totalPremiums / realPoolBalance) * 52 * 100), 999).toFixed(1)
-  : POOL_STATS.apy.toFixed(1)
-
-// Real utilization = premiums / balance * 100
-const realUtilization = realPoolBalance > 0
-  ? Math.min((totalPremiums / realPoolBalance) * 100, 100).toFixed(0)
-  : POOL_STATS.utilization
+  // Calculate user's SUI value from shares
+  const userDepositValue = totalShares > 0 && poolBalanceMist > 0
+    ? ((userShares / totalShares) * realPoolBalance).toFixed(4)
+    : '0.0000'
 
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [amount, setAmount] = useState('')
@@ -81,31 +115,51 @@ const realUtilization = realPoolBalance > 0
 
   useEffect(() => {
     getPoolAdvisorInsight({
-      utilization: POOL_STATS.utilization,
+      utilization: parseFloat(realUtilization),
       weeklyVolume: 18360000,
-      apy: POOL_STATS.apy,
+      apy: realAPY ? parseFloat(realAPY) : POOL_STATS.apy,
     }).then(setInsight)
-  }, [])
+  }, [realUtilization, realAPY])
 
-  const estimatedWeekly = amount ? ((parseFloat(amount) || 0) * POOL_STATS.weeklyYield / 100).toFixed(2) : '0.00'
-  const estimatedMonthly = amount ? ((parseFloat(amount) || 0) * POOL_STATS.apy / 100 / 12).toFixed(2) : '0.00'
+  // Estimated returns based on real APY or fallback
+  const apyForCalc = realAPY ? parseFloat(realAPY) : POOL_STATS.apy
+  const weeklyYieldPct = apyForCalc / 52
+  const estimatedWeekly = amount ? ((parseFloat(amount) || 0) * weeklyYieldPct / 100).toFixed(4) : '0.0000'
+  const estimatedMonthly = amount ? ((parseFloat(amount) || 0) * apyForCalc / 100 / 12).toFixed(4) : '0.0000'
 
   const handleDeposit = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return }
-   const tx = new Transaction()
+    if (parseFloat(amount) > walletBalance) { toast.error(`Insufficient balance. You have ${walletBalance} SUI`); return }
+
+    const tx = new Transaction()
     const amountMist = Math.floor(parseFloat(amount) * 1_000_000_000)
     const [coin] = tx.splitCoins(tx.gas, [amountMist])
     tx.moveCall({
       target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::deposit`,
       arguments: [tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!), coin],
     })
-    toast.loading('Confirming on Sui...')
+    toast.loading('Depositing SUI into pool...')
     signAndExecute(
       { transaction: tx as any },
       {
-        onSuccess: () => { toast.dismiss(); toast.success('Deposited successfully!') },
-        onError: (e) => { toast.dismiss(); toast.error(`Failed: ${e.message}`) },
+        onSuccess: () => {
+          toast.dismiss()
+          toast.success('Deposited successfully! 🎉')
+          setAmount('')
+          refetchPool()
+        },
+        onError: (e) => {
+          toast.dismiss()
+          const msg = e.message || ''
+          if (msg.includes('EPoolPaused')) {
+            toast.error('Pool is currently paused.')
+          } else if (msg.includes('reject') || msg.includes('cancel')) {
+            toast.error('Transaction rejected.')
+          } else {
+            toast.error(`Failed: ${msg.slice(0, 80)}`)
+          }
+        },
       }
     )
   }
@@ -113,18 +167,42 @@ const realUtilization = realPoolBalance > 0
   const handleWithdraw = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return }
+    if (userShares === 0) { toast.error('You have no shares to withdraw'); return }
+
     const tx = new Transaction()
-    const shares = Math.floor(parseFloat(amount) * 1_000_000_000)
+    // Withdraw by share amount — convert SUI amount to shares proportionally
+    const sharesToWithdraw = totalShares > 0 && poolBalanceMist > 0
+      ? Math.floor((parseFloat(amount) / realPoolBalance) * totalShares)
+      : Math.floor(parseFloat(amount) * 1_000_000_000)
+
     tx.moveCall({
       target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::withdraw`,
-      arguments: [tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!), tx.pure.u64(shares)],
+      arguments: [
+        tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!),
+        tx.pure.u64(sharesToWithdraw),
+      ],
     })
-    toast.loading('Withdrawing from pool...')
+    toast.loading('Withdrawing SUI from pool...')
     signAndExecute(
       { transaction: tx as any },
       {
-        onSuccess: () => { toast.dismiss(); toast.success('Withdrawn successfully!') },
-        onError: (e) => { toast.dismiss(); toast.error(`Failed: ${e.message}`) },
+        onSuccess: () => {
+          toast.dismiss()
+          toast.success('Withdrawn successfully! 🎉')
+          setAmount('')
+          refetchPool()
+        },
+        onError: (e) => {
+          toast.dismiss()
+          const msg = e.message || ''
+          if (msg.includes('EInsufficientShares') || msg.includes('shares')) {
+            toast.error('Insufficient shares to withdraw.')
+          } else if (msg.includes('reject') || msg.includes('cancel')) {
+            toast.error('Transaction rejected.')
+          } else {
+            toast.error(`Failed: ${msg.slice(0, 80)}`)
+          }
+        },
       }
     )
   }
@@ -133,41 +211,67 @@ const realUtilization = realPoolBalance > 0
     <div className="pt-20 md:pt-24 pb-12 min-h-screen">
       <div className="max-w-[1440px] mx-auto px-4 md:px-8">
 
-        {/* Header: smaller heading on mobile */}
+        {/* Header */}
         <div className="mb-8 md:mb-10">
           <h1 className="font-syne font-extrabold text-4xl md:text-5xl text-white mb-2 md:mb-3">
             Provide Liquidity
           </h1>
-          <p className="text-text-secondary font-mono text-sm">Earn fees by supplying USDC to the Volara options pool.</p>
+          <p className="text-text-secondary font-mono text-sm">Earn fees by supplying SUI to the Volara options pool.</p>
         </div>
 
-        {/* Stats grid: 2×2 on mobile, 4-col on md+ */}
+        {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
-          {[
-            { label: 'Deposited Amount', value: `${poolBalance} SUI`, sub: null, color: 'text-white' },
-            { label: 'Earnings (All Time)', value: `${POOL_STATS.earnings.toLocaleString()} USDC`, sub: `+${POOL_STATS.earningsPct}%`, color: 'text-profit' },
-           {
-  label: 'Pool Utilization', value: `${realUtilization}%`,
-              sub: <span className={cn('text-xs px-2 py-0.5 rounded-full font-mono', POOL_STATS.utilization < 40 ? 'bg-profit/15 text-profit' : POOL_STATS.utilization < 70 ? 'bg-yellow-400/15 text-yellow-400' : 'bg-danger/15 text-danger')}>
-                {POOL_STATS.riskLevel}
-              </span>,
-              color: POOL_STATS.utilization < 40 ? 'text-profit' : POOL_STATS.utilization < 70 ? 'text-yellow-400' : 'text-danger'
-            },
-            { label: 'APY (From Premiums)', value: `${realAPY}%`, sub: 'From real premiums', color: 'text-profit' },
-          ].map((card, i) => (
-            <div key={i} className="card p-4 md:p-5">
-              <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3 leading-tight">{card.label}</div>
-              <div className={cn('font-mono font-bold text-xl md:text-2xl mb-1 break-all', card.color)}>{card.value}</div>
-              {card.sub && (
-                typeof card.sub === 'string'
-                  ? <div className="text-profit text-xs font-mono">{card.sub}</div>
-                  : card.sub
-              )}
+          {/* Pool Total Balance */}
+          <div className="card p-4 md:p-5">
+            <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3">Pool Balance</div>
+            <div className="font-mono font-bold text-xl md:text-2xl mb-1 text-white">{poolBalance} SUI</div>
+            <div className="text-text-secondary text-xs font-mono">Total deposited</div>
+          </div>
+
+          {/* Your Deposit */}
+          <div className="card p-4 md:p-5">
+            <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3">Your Deposit</div>
+            <div className="font-mono font-bold text-xl md:text-2xl mb-1 text-profit">
+              {account ? `${userDepositValue} SUI` : '—'}
             </div>
-          ))}
+            <div className="text-text-secondary text-xs font-mono">
+              {account ? 'Your share of pool' : 'Connect wallet'}
+            </div>
+          </div>
+
+          {/* Pool Utilization */}
+          <div className="card p-4 md:p-5">
+            <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3">Pool Utilization</div>
+            <div className={cn(
+              'font-mono font-bold text-xl md:text-2xl mb-1',
+              parseFloat(realUtilization) < 40 ? 'text-profit' :
+              parseFloat(realUtilization) < 70 ? 'text-yellow-400' : 'text-danger'
+            )}>
+              {realUtilization}%
+            </div>
+            <span className={cn(
+              'text-xs px-2 py-0.5 rounded-full font-mono',
+              parseFloat(realUtilization) < 40 ? 'bg-profit/15 text-profit' :
+              parseFloat(realUtilization) < 70 ? 'bg-yellow-400/15 text-yellow-400' :
+              'bg-danger/15 text-danger'
+            )}>
+              {parseFloat(realUtilization) < 40 ? 'LOW' : parseFloat(realUtilization) < 70 ? 'MED' : 'HIGH'}
+            </span>
+          </div>
+
+          {/* APY */}
+          <div className="card p-4 md:p-5">
+            <div className="text-text-secondary text-xs font-mono mb-2 md:mb-3">APY (From Premiums)</div>
+            <div className="font-mono font-bold text-xl md:text-2xl mb-1 text-profit">
+              {realAPY ? `${realAPY}%` : '—'}
+            </div>
+            <div className="text-text-secondary text-xs font-mono">
+              {realAPY ? 'From real premiums' : 'No trading history yet'}
+            </div>
+          </div>
         </div>
 
-        {/* Main layout: single col on mobile, [1fr_380px] on lg+ */}
+        {/* Main layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 md:gap-8">
 
           {/* LEFT — form + chart */}
@@ -179,7 +283,7 @@ const realUtilization = realPoolBalance > 0
                 {(['deposit', 'withdraw'] as const).map(tab => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => { setActiveTab(tab); setAmount('') }}
                     className={cn(
                       'flex-1 py-2.5 rounded-lg text-sm font-mono font-medium capitalize transition-all min-h-[40px]',
                       activeTab === tab ? 'bg-primary text-white' : 'text-text-secondary hover:text-white'
@@ -191,7 +295,14 @@ const realUtilization = realPoolBalance > 0
               </div>
 
               <div className="mb-4">
-                <label className="text-text-secondary text-xs font-mono block mb-2">Amount (USDC)</label>
+                <label className="text-text-secondary text-xs font-mono block mb-2">
+                  Amount (SUI)
+                  {account && (
+                    <span className="ml-2 text-primary">
+                      Balance: {walletBalance} SUI
+                    </span>
+                  )}
+                </label>
                 <div className="flex items-center gap-3 bg-background border border-white/10 rounded-xl px-4 py-3">
                   <input
                     value={amount}
@@ -200,16 +311,19 @@ const realUtilization = realPoolBalance > 0
                     type="number"
                     className="flex-1 bg-transparent font-mono text-white text-xl focus:outline-none placeholder-text-secondary/40 min-w-0"
                   />
-                  <span className="text-text-secondary font-mono text-sm flex-shrink-0">~{amount ? `-${parseFloat(amount).toFixed(0)}` : '-0'} USDC</span>
+                  <span className="text-text-secondary font-mono text-sm flex-shrink-0">SUI</span>
                 </div>
                 <div className="flex gap-2 mt-2">
                   {['25%', '50%', '75%', 'MAX'].map(pct => (
                     <button
                       key={pct}
                       onClick={() => {
-                        const maxBalance = 4240
+                        // Use real wallet balance for deposit, user shares value for withdraw
+                        const maxVal = activeTab === 'deposit'
+                          ? walletBalance * 0.95 // Leave 5% for gas
+                          : parseFloat(userDepositValue)
                         const p = pct === 'MAX' ? 1 : parseInt(pct) / 100
-                        setAmount((maxBalance * p).toFixed(0))
+                        setAmount((maxVal * p).toFixed(4))
                       }}
                       className="flex-1 py-1.5 text-xs font-mono rounded-lg bg-white/5 text-text-secondary hover:bg-primary/15 hover:text-primary transition-all min-h-[32px]"
                     >
@@ -219,30 +333,44 @@ const realUtilization = realPoolBalance > 0
                 </div>
               </div>
 
+              {/* Estimated returns */}
               <div className="bg-background rounded-xl p-4 mb-4">
                 <div className="text-text-secondary text-xs font-mono mb-3">ESTIMATED RETURNS</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-text-secondary text-xs font-mono mb-1">Weekly Yield</div>
-                    <div className="text-profit font-mono font-bold text-lg md:text-xl">{estimatedWeekly} <span className="text-xs text-text-secondary">USDC</span></div>
+                {realAPY ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-text-secondary text-xs font-mono mb-1">Weekly Yield</div>
+                      <div className="text-profit font-mono font-bold text-lg md:text-xl">
+                        {estimatedWeekly} <span className="text-xs text-text-secondary">SUI</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-text-secondary text-xs font-mono mb-1">Monthly Estimate</div>
+                      <div className="text-profit font-mono font-bold text-lg md:text-xl">
+                        {estimatedMonthly} <span className="text-xs text-text-secondary">SUI</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-text-secondary text-xs font-mono mb-1">Monthly Estimate</div>
-                    <div className="text-profit font-mono font-bold text-lg md:text-xl">{estimatedMonthly} <span className="text-xs text-text-secondary">USDC</span></div>
+                ) : (
+                  <div className="text-text-secondary text-xs font-mono">
+                    Returns will show after trading activity begins. LPs earn 100% of option premiums.
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="mb-5 md:mb-6">
                 <div className="text-text-secondary text-xs font-mono mb-3">RISK LEVEL</div>
-                <RiskMeter level={POOL_STATS.riskLevel} />
+                <RiskMeter level={
+                  parseFloat(realUtilization) < 40 ? 'LOW' :
+                  parseFloat(realUtilization) < 70 ? 'MED' : 'HIGH'
+                } />
               </div>
 
               <button
                 onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
                 className="w-full py-4 rounded-xl bg-primary text-white font-syne font-bold text-lg hover:shadow-glow-indigo transition-all min-h-[52px]"
               >
-                {activeTab === 'deposit' ? 'Deposit USDC' : 'Withdraw USDC'}
+                {activeTab === 'deposit' ? 'Deposit SUI' : 'Withdraw SUI'}
               </button>
 
               {!account && (
@@ -252,11 +380,10 @@ const realUtilization = realPoolBalance > 0
               )}
             </div>
 
-            {/* Pool Analytics chart */}
+            {/* Pool Analytics chart — labeled as projected */}
             <div className="card p-5 md:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-5 md:mb-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <h3 className="font-syne font-bold text-lg md:text-xl text-white">Pool Analytics</h3>
-                {/* Filter buttons: scrollable row on mobile */}
                 <div className="flex gap-1 overflow-x-auto">
                   {(['7D', '30D', '90D', '1Y', 'ALL'] as const).map(f => (
                     <button
@@ -272,7 +399,10 @@ const realUtilization = realPoolBalance > 0
                   ))}
                 </div>
               </div>
-              {/* Chart: constrain height on mobile, auto on desktop */}
+              {/* Simulated data disclaimer */}
+              <div className="text-xs font-mono text-yellow-400/70 mb-4 flex items-center gap-1">
+                ⚠️ Projected data — based on protocol targets, not historical performance
+              </div>
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={ANALYTICS_DATA} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
@@ -308,7 +438,6 @@ const realUtilization = realPoolBalance > 0
           </div>
 
           {/* RIGHT — AI insight + pool info + warning */}
-          {/* Naturally stacks below on mobile */}
           <div className="space-y-4 md:space-y-5">
             <div className="ai-box p-4 md:p-5">
               <div className="flex items-center gap-2 mb-4">
@@ -353,10 +482,11 @@ const realUtilization = realPoolBalance > 0
               {[
                 { label: 'Protocol', value: 'Volara v1' },
                 { label: 'Network', value: 'Sui Testnet' },
-                { label: 'Asset', value: 'USDC (SUI)' },
+                { label: 'Asset', value: 'SUI' },
                 { label: 'Lock Period', value: 'None' },
                 { label: 'Fee Share', value: '100% to LPs' },
                 { label: 'Settlement', value: 'Auto on expiry' },
+                { label: 'Max Utilization', value: '70%' },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between text-xs font-mono">
                   <span className="text-text-secondary">{item.label}</span>
@@ -368,11 +498,10 @@ const realUtilization = realPoolBalance > 0
             <div className="flex gap-3 p-4 bg-yellow-400/5 border border-yellow-400/20 rounded-xl">
               <AlertCircle size={16} className="text-yellow-400 flex-shrink-0 mt-0.5" />
               <p className="text-yellow-400/80 text-xs font-mono leading-relaxed">
-                Liquidity providers may experience losses if option payouts exceed pool earnings. Always understand the risk before depositing.
+                Liquidity providers may experience losses if option payouts exceed pool earnings. Always understand the risk before depositing. This is testnet — no real funds at risk.
               </p>
             </div>
           </div>
-
         </div>
       </div>
     </div>

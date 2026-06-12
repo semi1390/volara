@@ -11,7 +11,9 @@ module volara::options {
     // ===== Constants =====
     const CALL: u8 = 0;
     const PUT: u8 = 1;
-    const MIN_PREMIUM_MIST: u64 = 1_000_000; // 0.001 SUI minimum premium
+    const MIN_PREMIUM_MIST: u64 = 1_000_000;     // 0.001 SUI minimum premium
+    const MIN_CONTRACT_SIZE: u64 = 1;              // minimum 1x
+    const MAX_CONTRACT_SIZE: u64 = 10_000;         // maximum 10000x
 
     // ===== Errors =====
     const EInvalidOptionType: u64 = 0;
@@ -23,6 +25,7 @@ module volara::options {
     const EInvalidStrike: u64 = 6;
     const EInvalidQuantity: u64 = 7;
     const EPremiumTooLow: u64 = 8;
+    const EInvalidContractSize: u64 = 9;
 
     // ===== Events =====
     public struct OptionBoughtEvent has copy, drop {
@@ -33,6 +36,7 @@ module volara::options {
         expiry_timestamp: u64,
         premium_paid: u64,
         quantity: u64,
+        contract_size: u64,
     }
 
     public struct PositionClosedEvent has copy, drop {
@@ -48,6 +52,7 @@ module volara::options {
         expiry_timestamp: u64,
         premium_paid: u64,
         quantity: u64,
+        contract_size: u64,   // NEW — how many units per contract (e.g. 100 for SUI)
         owner: address,
         is_settled: bool,
         market: vector<u8>,
@@ -60,13 +65,19 @@ module volara::options {
         strike_price: u64,
         expiry_timestamp: u64,
         quantity: u64,
+        contract_size: u64,   // NEW — passed by frontend, validated on-chain
         market: vector<u8>,
         payment: Coin<SUI>,
         ctx: &mut TxContext
     ) {
+        // Validate inputs
         assert!(option_type == CALL || option_type == PUT, EInvalidOptionType);
         assert!(strike_price > 0, EInvalidStrike);
         assert!(quantity > 0, EInvalidQuantity);
+
+        // Validate contract size on-chain — cannot be bypassed from frontend
+        assert!(contract_size >= MIN_CONTRACT_SIZE, EInvalidContractSize);
+        assert!(contract_size <= MAX_CONTRACT_SIZE, EInvalidContractSize);
 
         // Pool must not be paused
         assert!(!liquidity_pool::is_paused(pool), 0);
@@ -74,14 +85,18 @@ module volara::options {
         let payment_amount = coin::value(&payment);
 
         // Enforce minimum premium on-chain
-        assert!(payment_amount >= MIN_PREMIUM_MIST, EPremiumTooLow);
+        // Premium must cover at least MIN_PREMIUM_MIST × contract_size × quantity
+        let min_required = MIN_PREMIUM_MIST * contract_size * quantity;
+        assert!(payment_amount >= min_required, EPremiumTooLow);
 
         let fee = fees::calculate_fee(payment_amount);
         let premium = payment_amount - fee;
         assert!(premium > 0, EInsufficientPremium);
 
         // Check utilization cap before accepting
-        liquidity_pool::check_utilization(pool, premium);
+        // Exposure = premium × contract_size to account for leverage
+        let exposure = premium * contract_size;
+        liquidity_pool::check_utilization(pool, exposure);
 
         // Split fee from payment
         let mut payment_mut = payment;
@@ -89,7 +104,7 @@ module volara::options {
         fees::collect_fee_coin(fee_coin, ctx);
 
         // Track exposure
-        liquidity_pool::add_exposure(pool, premium);
+        liquidity_pool::add_exposure(pool, exposure);
 
         // Rest goes to pool
         liquidity_pool::collect_premium(pool, payment_mut);
@@ -105,6 +120,7 @@ module volara::options {
             expiry_timestamp,
             premium_paid: premium,
             quantity,
+            contract_size,
             owner: buyer,
             is_settled: false,
             market,
@@ -118,6 +134,7 @@ module volara::options {
             expiry_timestamp,
             premium_paid: premium,
             quantity,
+            contract_size,
         });
 
         transfer::transfer(option, buyer);
@@ -138,6 +155,7 @@ module volara::options {
             expiry_timestamp: _,
             premium_paid: _,
             quantity: _,
+            contract_size: _,
             owner,
             is_settled: _,
             market: _,
@@ -151,12 +169,13 @@ module volara::options {
         object::delete(id);
     }
 
-    // Getters
+    // ===== Getters =====
     public fun get_option_type(option: &OptionPosition): u8 { option.option_type }
     public fun get_strike_price(option: &OptionPosition): u64 { option.strike_price }
     public fun get_expiry(option: &OptionPosition): u64 { option.expiry_timestamp }
     public fun get_premium(option: &OptionPosition): u64 { option.premium_paid }
     public fun get_quantity(option: &OptionPosition): u64 { option.quantity }
+    public fun get_contract_size(option: &OptionPosition): u64 { option.contract_size }
     public fun get_owner(option: &OptionPosition): address { option.owner }
     public fun is_settled(option: &OptionPosition): bool { option.is_settled }
     public fun get_market(option: &OptionPosition): vector<u8> { option.market }
@@ -176,6 +195,7 @@ module volara::options {
             expiry_timestamp: _,
             premium_paid: _,
             quantity: _,
+            contract_size: _,
             owner: _,
             is_settled: _,
             market: _,

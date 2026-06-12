@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { X, ChevronDown, Plus, Minus, ChevronRight, BookOpen } from 'lucide-react'
 import { cn, calculatePremium, getUtilizationWarning } from '@/lib/utils'
 import { RECENT_TRADES, EXPIRED_POSITIONS, MARKETS, EXPIRIES } from '@/lib/dummy-data'
@@ -35,7 +36,7 @@ function TradingChart({ market }: { market: typeof MARKETS[0] }) {
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
     script.type = 'text/javascript'
     script.async = true
-    const symbol = market.id === 'sui-usdc' ? 'BINANCE:SUIUSDT' : market.id === 'deep-usdc' ? 'CRYPTO:DEEPUSDT' : 'BINANCE:CETUSUSDT'
+    const symbol = market.id === 'sui-usdc' ? 'BINANCE:SUIUSDT' : market.id === 'deep-usdc' ? 'KUCOIN:DEEPUSDT' : 'MEXC:CETUSUSDT'
     script.innerHTML = JSON.stringify({
       autosize: true, symbol, interval: '60', timezone: 'Etc/UTC',
       theme: 'dark', style: '1', locale: 'en',
@@ -107,6 +108,7 @@ export default function TradePage() {
   const { mutate: signAndExecute } = useSignAndExecuteTransaction()
   const [showOrderBook, setShowOrderBook] = useState(false)
   const [poolUtilization, setPoolUtilization] = useState(0)
+  const searchParams = useSearchParams()
 
   const { data: balanceData } = useSuiClientQuery(
     'getBalance',
@@ -114,7 +116,6 @@ export default function TradePage() {
     { enabled: !!account?.address }
   )
 
-  // Fetch real pool utilization from chain
   const { data: poolData } = useSuiClientQuery('getObject', {
     id: process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!,
     options: { showContent: true },
@@ -125,9 +126,7 @@ export default function TradePage() {
       const fields = (poolData.data.content.fields as any)
       const balance = parseInt(fields?.balance ?? '0')
       const exposure = parseInt(fields?.total_exposure ?? '0')
-      if (balance > 0) {
-        setPoolUtilization((exposure / balance) * 100)
-      }
+      if (balance > 0) setPoolUtilization((exposure / balance) * 100)
     }
   }, [poolData])
 
@@ -141,6 +140,15 @@ export default function TradePage() {
   }))
 
   const [selectedMarketId, setSelectedMarketId] = useState(MARKETS[0].id)
+
+  // Read market from URL params — fires when coming from market cards
+  useEffect(() => {
+    const market = searchParams.get('market')
+    if (market && MARKETS.find(m => m.id === market)) {
+      setSelectedMarketId(market)
+    }
+  }, [searchParams])
+
   const selectedMarket = marketsWithPrices.find(m => m.id === selectedMarketId) || marketsWithPrices[0]
   const { orderBook, loading: orderBookLoading } = useOrderBook(selectedMarketId)
   const [activeTab, setActiveTab] = useState<'CALLS' | 'PUTS'>('CALLS')
@@ -150,6 +158,12 @@ export default function TradePage() {
   const [quantity, setQuantity] = useState(1)
   const [showExpired, setShowExpired] = useState(false)
   const [centerTab, setCenterTab] = useState<'trade' | 'chain'>('trade')
+
+  // Update strike when market changes
+  useEffect(() => {
+    const market = MARKETS.find(m => m.id === selectedMarketId)
+    if (market) setSelectedStrike(market.strikes[0])
+  }, [selectedMarketId])
 
   const premium = calculatePremium(optionType, selectedStrike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100, poolUtilization)
   const totalPremium = +(premium * quantity).toFixed(4)

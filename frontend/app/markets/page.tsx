@@ -124,11 +124,11 @@ export default function MarketsPage() {
                     <div className="text-primary font-mono text-sm font-medium">{market.impliedVol.toFixed(1)}%</div>
                   </div>
                 </div>
-                <Link href="/trade">
-                  <button className="w-full py-2.5 rounded-xl border border-primary/30 text-primary text-sm font-mono group-hover:bg-primary/10 group-hover:border-primary flex items-center justify-center gap-2 transition-all">
-                    Trade <ArrowRight size={14} />
-                  </button>
-                </Link>
+              <Link href={`/trade?market=${market.id}`}>
+  <button className="w-full py-2.5 rounded-xl border border-primary/30 text-primary text-sm font-mono group-hover:bg-primary/10 group-hover:border-primary flex items-center justify-center gap-2 transition-all">
+    Trade <ArrowRight size={14} />
+  </button>
+</Link>
               </div>
             )
           })}
