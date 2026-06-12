@@ -113,7 +113,7 @@ const realUtilization = realPoolBalance > 0
   const handleWithdraw = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return }
-    const tx = new TransactionBlock()
+    const tx = new Transaction()
     const shares = Math.floor(parseFloat(amount) * 1_000_000_000)
     tx.moveCall({
       target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::withdraw`,
