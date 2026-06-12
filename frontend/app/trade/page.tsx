@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { X, ChevronDown, Plus, Minus, ChevronRight, BookOpen } from 'lucide-react'
 import { cn, calculatePremium, calculateExposure, calculateLeverage, getUtilizationWarning } from '@/lib/utils'
-import { RECENT_TRADES, EXPIRED_POSITIONS, MARKETS, EXPIRIES } from '@/lib/dummy-data'
+import { RECENT_TRADES, EXPIRED_POSITIONS, MARKETS, EXPIRIES, generateStrikes } from '@/lib/dummy-data'
 import { getOptionAdvisorInsight } from '@/lib/claude'
 import { usePrices } from '@/hooks/usePrices'
 import { usePositions } from '@/hooks/usePositions'
@@ -134,10 +134,15 @@ function AIAdvisorBox({ type, strike, market, expiryDays }: { type: OptionType; 
     ? (parseInt(balanceData.totalBalance) / 1_000_000_000).toFixed(3)
     : '0.000'
 
-  const marketsWithPrices = MARKETS.map(m => ({
+const marketsWithPrices = MARKETS.map(m => {
+  const livePrice = m.id === 'sui-usdc' ? prices.sui.price : m.id === 'deep-usdc' ? prices.deep.price : prices.cetus.price
+  const price = livePrice > 0 ? livePrice : m.price
+  return {
     ...m,
-    price: m.id === 'sui-usdc' ? prices.sui.price : m.id === 'deep-usdc' ? prices.deep.price : prices.cetus.price,
-  }))
+    price,
+    strikes: generateStrikes(price, 6),
+  }
+})
 
   const [selectedMarketId, setSelectedMarketId] = useState(MARKETS[0].id)
 
@@ -159,10 +164,11 @@ function AIAdvisorBox({ type, strike, market, expiryDays }: { type: OptionType; 
   const [showExpired, setShowExpired] = useState(false)
   const [centerTab, setCenterTab] = useState<'trade' | 'chain'>('trade')
 
-  useEffect(() => {
-    const market = MARKETS.find(m => m.id === selectedMarketId)
-    if (market) setSelectedStrike(market.strikes[0])
-  }, [selectedMarketId])
+ useEffect(() => {
+  if (selectedMarket.strikes.length > 0) {
+    setSelectedStrike(selectedMarket.strikes[0])
+  }
+}, [selectedMarketId, selectedMarket.strikes[0]])
 
   // Premium = base Black-Scholes × contractSize × quantity
   // This is what gets passed to the contract
