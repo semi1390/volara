@@ -25,7 +25,7 @@ function getNextFridays(count: number) {
 // ─── Dynamic Strikes — generated around current price ────────────────────────
 // Generates 6 strikes: 3 below, 1 ATM, 2 above current price
 // Rounded to nearest sensible increment based on price magnitude
-function generateStrikes(currentPrice: number, count: number = 6): number[] {
+export function generateStrikes(currentPrice: number, count: number = 6): number[] {
   // Determine step size based on price
   let step: number
   if (currentPrice < 0.10) step = 0.005
