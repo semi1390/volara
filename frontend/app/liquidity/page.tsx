@@ -117,7 +117,7 @@ const realUtilization = realPoolBalance > 0
     const shares = Math.floor(parseFloat(amount) * 1_000_000_000)
     tx.moveCall({
       target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::withdraw`,
-      arguments: [tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!), tx.pure(shares)],
+      arguments: [tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!), tx.pure.u64(shares)],
     })
     toast.loading('Withdrawing from pool...')
     signAndExecute(
