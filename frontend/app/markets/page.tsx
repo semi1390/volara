@@ -50,7 +50,7 @@ export default function MarketsPage() {
       <div className="max-w-[1440px] mx-auto px-4 md:px-8">
         <div className="mb-6 md:mb-10">
           <h1 className="font-syne font-extrabold text-3xl md:text-5xl text-white mb-2 md:mb-3">Markets</h1>
-          <p className="text-text-secondary font-mono text-sm">Options markets on Sui. All prices in USDC.</p>
+          <p className="text-text-secondary font-mono text-sm">Options markets on Sui. Premiums and payouts in SUI.</p>
         </div>
 
         {/* Filter Bar */}
@@ -86,6 +86,8 @@ export default function MarketsPage() {
           {filtered.map(market => {
             const positive = market.change24h >= 0
             const sparkData = SPARKLINE_DATA[market.id as keyof typeof SPARKLINE_DATA] || []
+            // Exposure per contract = contractSize × current price
+            const exposurePerContract = (market.contractSize * market.price).toFixed(0)
             return (
               <div key={market.id} className="card p-5 md:p-6 hover-lift hover:border-primary/20 hover:shadow-glow-indigo group cursor-pointer">
                 <div className="mb-4">
@@ -105,7 +107,9 @@ export default function MarketsPage() {
                     {positive ? '▲' : '▼'} {Math.abs(market.change24h).toFixed(2)}%
                   </div>
                 </div>
+
                 <div className="font-mono text-2xl md:text-3xl text-white mb-4 md:mb-5">${market.price.toFixed(3)}</div>
+
                 <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-5">
                   <div>
                     <div className="text-text-secondary text-xs font-mono mb-1">Open Interest</div>
@@ -116,6 +120,16 @@ export default function MarketsPage() {
                     <div className="text-white font-mono text-sm font-medium">{formatCurrency(market.volume24h)}</div>
                   </div>
                   <div>
+                    <div className="text-text-secondary text-xs font-mono mb-1">Contract Size</div>
+                    <div className="text-primary font-mono text-sm font-medium">
+                      {market.contractSize.toLocaleString()} {market.symbol}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-text-secondary text-xs font-mono mb-1">Exposure / Contract</div>
+                    <div className="text-white font-mono text-sm font-medium">~${exposurePerContract}</div>
+                  </div>
+                  <div>
                     <div className="text-text-secondary text-xs font-mono mb-1">Available Strikes</div>
                     <div className="text-white font-mono text-sm font-medium">{market.strikes.length}</div>
                   </div>
@@ -124,11 +138,12 @@ export default function MarketsPage() {
                     <div className="text-primary font-mono text-sm font-medium">{market.impliedVol.toFixed(1)}%</div>
                   </div>
                 </div>
-              <Link href={`/trade?market=${market.id}`}>
-  <button className="w-full py-2.5 rounded-xl border border-primary/30 text-primary text-sm font-mono group-hover:bg-primary/10 group-hover:border-primary flex items-center justify-center gap-2 transition-all">
-    Trade <ArrowRight size={14} />
-  </button>
-</Link>
+
+                <Link href={`/trade?market=${market.id}`}>
+                  <button className="w-full py-2.5 rounded-xl border border-primary/30 text-primary text-sm font-mono group-hover:bg-primary/10 group-hover:border-primary flex items-center justify-center gap-2 transition-all">
+                    Trade <ArrowRight size={14} />
+                  </button>
+                </Link>
               </div>
             )
           })}
