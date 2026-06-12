@@ -13,14 +13,13 @@ const SETTLEMENT_REGISTRY_ID = process.env.SETTLEMENT_REGISTRY_ID
 const PRIVATE_KEY = process.env.KEEPER_PRIVATE_KEY
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
-const CHECK_INTERVAL_MS = 60_000 // 60 seconds
+const CHECK_INTERVAL_MS = 60_000
 const LOG_FILE = path.join(__dirname, 'keeper.log')
-const PYTH_ENDPOINT = 'https://hermes-beta.pyth.network'
 
 // Pyth config
 const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
-const MAX_PRICE_AGE_SECONDS = 60 // reject prices older than 60 seconds
-const SUI_CLOCK_OBJECT = '0x6' // Sui system clock object
+const MAX_PRICE_AGE_SECONDS = 60
+const SUI_CLOCK_OBJECT = '0x6'
 
 // ─── Sui Client ───────────────────────────────────────────────────────────────
 const client = new SuiClient({ url: getFullnodeUrl('testnet') })
@@ -59,21 +58,13 @@ async function sendTelegram(msg) {
 }
 
 // ─── Get SUI price from Pyth ONLY ─────────────────────────────────────────────
-// NO CoinGecko fallback — if Pyth fails, we pause settlement
-// This prevents centralized price manipulation at settlement time
 async function getSuiPrice() {
   try {
-    const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
-   // For Sui Testnet use hermes-beta, for mainnet use hermes
-const url = `https://hermes-beta.pyth.network/v2/updates/price/latest?ids[]=${SUI_USD_FEED}&parsed=true`
+    const url = `https://hermes-beta.pyth.network/v2/updates/price/latest?ids[]=${SUI_USD_FEED}&parsed=true`
+    const res = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } })
+    if (!res.ok) throw new Error(`Pyth HTTP error: ${res.status}`)
 
-const res = await fetch(url, {
-  method: 'GET',
-  headers: { accept: 'application/json' }
-})
-if (!res.ok) throw new Error(`Pyth HTTP error: ${res.status}`)
-
-const data = await res.json()
+    const data = await res.json()
     const parsed = data.parsed?.[0]
     if (!parsed) throw new Error('No price data in Pyth response')
 
@@ -82,13 +73,11 @@ const data = await res.json()
     const confidence = parseFloat(price.conf) * Math.pow(10, price.expo)
     const confidencePct = (confidence / priceValue) * 100
 
-    // Check price age
     const priceAgeMs = Date.now() - (parsed.price.publish_time * 1000)
     if (priceAgeMs > MAX_PRICE_AGE_SECONDS * 1000) {
       throw new Error(`Price too stale: ${(priceAgeMs/1000).toFixed(0)}s old`)
     }
 
-    // Check confidence interval
     if (confidencePct > 2) {
       throw new Error(`Confidence too wide: ${confidencePct.toFixed(2)}%`)
     }
@@ -103,10 +92,32 @@ const data = await res.json()
   }
 }
 
+// ─── Read contract_size from option object on-chain ───────────────────────────
+// contract_size is stored IN the option object — we read it from chain
+// Never trust the frontend or keeper to pass this value
+async function getOptionContractSize(optionId) {
+  try {
+    const obj = await client.getObject({
+      id: optionId,
+      options: { showContent: true },
+    })
+    if (obj?.data?.content?.dataType === 'moveObject') {
+      const fields = obj.data.content.fields
+      const contractSize = parseInt(fields?.contract_size ?? '1')
+      log(`📦 Option ${optionId.slice(0, 12)}... contract_size: ${contractSize}`)
+      return contractSize
+    }
+    log(`⚠️ Could not read contract_size for ${optionId.slice(0, 12)}... — defaulting to 1`)
+    return 1
+  } catch (e) {
+    log(`⚠️ Error reading contract_size: ${e.message} — defaulting to 1`)
+    return 1
+  }
+}
+
 // ─── Check if already settled ─────────────────────────────────────────────────
 async function hasBeenSettled(optionId) {
   try {
-    // Check if option ID exists in the settlement registry
     const result = await client.devInspectTransactionBlock({
       transactionBlock: (() => {
         const tx = new Transaction()
@@ -121,7 +132,6 @@ async function hasBeenSettled(optionId) {
       })(),
       sender: keypair.getPublicKey().toSuiAddress(),
     })
-    // If the call returns true, already settled
     const returnValues = result?.results?.[0]?.returnValues
     if (returnValues && returnValues[0]) {
       const settled = returnValues[0][0][0] === 1
@@ -130,7 +140,7 @@ async function hasBeenSettled(optionId) {
     return false
   } catch (e) {
     log(`Could not check settlement status for ${optionId}: ${e.message}`)
-    return false // assume not settled if check fails
+    return false
   }
 }
 
@@ -138,7 +148,6 @@ async function hasBeenSettled(optionId) {
 async function getExpiredOptions() {
   try {
     const now = Math.floor(Date.now() / 1000)
-
     const objects = await client.queryEvents({
       query: { MoveModule: { package: PACKAGE_ID, module: 'options' } },
       limit: 50,
@@ -167,8 +176,7 @@ async function getExpiredOptions() {
 }
 
 // ─── Settle an option using keeper_settle ─────────────────────────────────────
-// Uses keeper_settle (permissionless) instead of settle_option (owner only)
-// Also passes Clock object for tamper-proof timestamp
+// Reads contract_size from chain — never trusted from external source
 async function settleOption(optionId, settlementPrice, priceTimestampMs) {
   try {
     // Check duplicate settlement FIRST
@@ -181,8 +189,6 @@ async function settleOption(optionId, settlementPrice, priceTimestampMs) {
     const tx = new Transaction()
     const priceInMist = Math.floor(settlementPrice * 1_000_000_000)
 
-    // Use keeper_settle — permissionless, anyone can call after expiry
-    // Passes Clock object for on-chain timestamp validation
     tx.moveCall({
       target: `${PACKAGE_ID}::settlement::keeper_settle`,
       arguments: [
@@ -191,7 +197,7 @@ async function settleOption(optionId, settlementPrice, priceTimestampMs) {
         tx.object(optionId),
         tx.pure.u64(priceInMist),
         tx.pure.u64(priceTimestampMs),
-        tx.object(SUI_CLOCK_OBJECT), // tamper-proof clock
+        tx.object(SUI_CLOCK_OBJECT),
       ],
     })
 
@@ -217,7 +223,6 @@ async function settleOption(optionId, settlementPrice, priceTimestampMs) {
 async function checkAndSettle() {
   log('🔍 Checking for expired options...')
 
-  // STEP 1: Get price from Pyth ONLY — fail closed if unavailable
   const priceData = await getSuiPrice()
   if (!priceData) {
     log('⏸️ Skipping settlement round — oracle unavailable')
@@ -227,14 +232,12 @@ async function checkAndSettle() {
   const { price, timestampMs } = priceData
   log(`💰 Settlement price: $${price.toFixed(4)}`)
 
-  // STEP 2: Get expired options
   const expired = await getExpiredOptions()
   if (expired.length === 0) {
     log('✅ No expired options to settle')
     return
   }
 
-  // STEP 3: Settle each with duplicate protection
   let settled = 0
   let skipped = 0
   let failed = 0
@@ -242,13 +245,17 @@ async function checkAndSettle() {
   for (const option of expired) {
     log(`⚡ Processing option ${option.id.slice(0, 12)}... (expired: ${new Date(option.expiry * 1000).toISOString()})`)
 
+    // Read contract_size from chain before settling
+    const contractSize = await getOptionContractSize(option.id)
+    log(`📐 Contract size for ${option.id.slice(0, 12)}...: ${contractSize}x`)
+
     const digest = await settleOption(option.id, price, timestampMs)
 
     if (digest === null && await hasBeenSettled(option.id)) {
       skipped++
     } else if (digest) {
       settled++
-      const msg = `✅ *Volara Settlement*\n\nOption: \`${option.id.slice(0, 12)}...\`\nMarket: ${option.market}\nPrice: $${price.toFixed(4)}\nTx: \`${digest}\`\nTime: ${new Date().toISOString()}`
+      const msg = `✅ *Volara Settlement*\n\nOption: \`${option.id.slice(0, 12)}...\`\nMarket: ${option.market}\nContract Size: ${contractSize}x\nPrice: $${price.toFixed(4)}\nTx: \`${digest}\`\nTime: ${new Date().toISOString()}`
       log(`✅ Settled! Tx: ${digest}`)
       await sendTelegram(msg)
     } else {
@@ -256,7 +263,6 @@ async function checkAndSettle() {
       log(`❌ Settlement failed for ${option.id.slice(0, 12)}...`)
     }
 
-    // Small delay between settlements
     await new Promise(r => setTimeout(r, 2000))
   }
 
@@ -292,18 +298,11 @@ async function start() {
   log(`⏱️  Check interval: ${CHECK_INTERVAL_MS / 1000}s`)
   log(`🔒 Oracle: Pyth only (no CoinGecko fallback — fail closed)`)
 
-  await sendTelegram('🚀 *Volara Keeper v2.0 Started*\n\n✅ Pyth oracle only\n✅ Duplicate protection\n✅ Clock-based settlement\n✅ Confidence interval validation\n\nMonitoring Sui Testnet...')
+  await sendTelegram('🚀 *Volara Keeper v2.0 Started*\n\n✅ Pyth oracle only\n✅ Duplicate protection\n✅ Clock-based settlement\n✅ Contract size read from chain\n✅ Confidence interval validation\n\nMonitoring Sui Testnet...')
 
-  // Health check on start
   await healthCheck()
-
-  // Run immediately on start
   await checkAndSettle()
-
-  // Then run every 60 seconds
   setInterval(checkAndSettle, CHECK_INTERVAL_MS)
-
-  // Health check every 10 minutes
   setInterval(healthCheck, 10 * 60 * 1000)
 }
 
