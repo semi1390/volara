@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { X, ChevronDown, Plus, Minus, ChevronRight, BookOpen } from 'lucide-react'
 import { cn, calculatePremium, calculateExposure, calculateLeverage, getUtilizationWarning } from '@/lib/utils'
@@ -101,7 +101,7 @@ function AIAdvisorBox({ type, strike, market, expiryDays }: { type: OptionType; 
   )
 }
 
-export default function TradePage() {
+ function TradePageInner() {
   const { prices } = usePrices()
   const account = useCurrentAccount()
   const { positions, isLoading: positionsLoading, refetch: refetchPositions } = usePositions()
@@ -675,5 +675,17 @@ export default function TradePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TradePage() {
+  return (
+    <Suspense fallback={
+      <div className="pt-16 bg-background min-h-screen flex items-center justify-center">
+        <div className="text-text-secondary font-mono text-sm">Loading...</div>
+      </div>
+    }>
+      <TradePageInner />
+    </Suspense>
   )
 }
