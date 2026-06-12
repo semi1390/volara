@@ -208,30 +208,35 @@ function AIAdvisorBox({ type, strike, market, expiryDays }: { type: OptionType; 
 
     toast.loading('Buying option on Sui...')
     signAndExecute({ transaction: tx as any }, {
-      onSuccess: (result) => {
-        toast.dismiss()
-        const tweetText = `Just bought a ${optionType} option on $${selectedMarket.symbol} at $${selectedStrike.toFixed(2)} strike on @VolaraProtocol! 🚀\n\nDecentralized options on Sui — hedge smarter, trade better.\n\nhttps://volara-gold.vercel.app\n\n#Sui #DeFi #Volara`
-        const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
-        toast.success(`Option bought! 🎉 Tx: ${result.digest.slice(0, 8)}...`, { duration: 6000 })
-        setTimeout(() => {
-          toast((t) => (
-            <div className="flex flex-col gap-2">
-              <span className="font-bold text-sm">Share your trade? 🐦</span>
-              <div className="flex gap-2">
-                <button onClick={() => { window.open(tweetUrl, '_blank'); toast.dismiss(t.id) }}
-                  className="px-3 py-1.5 bg-[#1DA1F2] text-white rounded-lg text-xs font-mono hover:bg-[#1a8fd1] transition-colors">
-                  Tweet it!
-                </button>
-                <button onClick={() => toast.dismiss(t.id)}
-                  className="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-mono hover:bg-white/20 transition-colors">
-                  Skip
-                </button>
-              </div>
-            </div>
-          ), { duration: 8000 })
-        }, 1500)
-        refetchPositions()
-      },
+onSuccess: (result) => {
+  toast.dismiss()
+  if ((result as any).effects?.status?.status === 'failure') {
+    const error = (result as any).effects?.status?.error ?? 'Unknown error'
+    toast.error(`Transaction failed: ${error.slice(0, 80)}`)
+    return
+  }
+  const tweetText = `Just bought a ${optionType} option on $${selectedMarket.symbol} at $${selectedStrike.toFixed(2)} strike on @VolaraProtocol! 🚀\n\nDecentralized options on Sui — hedge smarter, trade better.\n\nhttps://volara-gold.vercel.app\n\n#Sui #DeFi #Volara`
+  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
+  toast.success(`Option bought! 🎉 Tx: ${result.digest.slice(0, 8)}...`, { duration: 6000 })
+  setTimeout(() => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <span className="font-bold text-sm">Share your trade? 🐦</span>
+        <div className="flex gap-2">
+          <button onClick={() => { window.open(tweetUrl, '_blank'); toast.dismiss(t.id) }}
+            className="px-3 py-1.5 bg-[#1DA1F2] text-white rounded-lg text-xs font-mono hover:bg-[#1a8fd1] transition-colors">
+            Tweet it!
+          </button>
+          <button onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-mono hover:bg-white/20 transition-colors">
+            Skip
+          </button>
+        </div>
+      </div>
+    ), { duration: 8000 })
+  }, 1500)
+  refetchPositions()
+},
       onError: (e) => {
         toast.dismiss()
         const msg = e.message || ''
