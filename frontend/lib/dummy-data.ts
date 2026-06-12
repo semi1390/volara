@@ -1,134 +1,145 @@
+// ─── Dynamic Expiries — always next 3 Fridays from today ─────────────────────
+function getNextFridays(count: number) {
+  const fridays = []
+  const now = new Date()
+  const day = now.getUTCDay()
+  const daysUntilFriday = (5 - day + 7) % 7 || 7
+  const firstFriday = new Date(now)
+  firstFriday.setUTCDate(now.getUTCDate() + daysUntilFriday)
+  firstFriday.setUTCHours(12, 0, 0, 0)
+
+  for (let i = 0; i < count; i++) {
+    const d = new Date(firstFriday)
+    d.setUTCDate(d.getUTCDate() + i * 7)
+    const daysLeft = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    fridays.push({
+      label,
+      date: d.toISOString().split('T')[0],
+      daysLeft,
+    })
+  }
+  return fridays
+}
+
+// ─── Dynamic Strikes — generated around current price ────────────────────────
+// Generates 6 strikes: 3 below, 1 ATM, 2 above current price
+// Rounded to nearest sensible increment based on price magnitude
+function generateStrikes(currentPrice: number, count: number = 6): number[] {
+  // Determine step size based on price
+  let step: number
+  if (currentPrice < 0.10) step = 0.005
+  else if (currentPrice < 0.50) step = 0.01
+  else if (currentPrice < 2.00) step = 0.05
+  else if (currentPrice < 10) step = 0.25
+  else step = 1.0
+
+  // Round current price down to nearest step
+  const base = Math.floor(currentPrice / step) * step
+
+  // Generate strikes: 2 below ATM, ATM, 3 above ATM
+  const strikes = []
+  for (let i = -2; i <= count - 3; i++) {
+    const strike = +(base + i * step).toFixed(4)
+    if (strike > 0) strikes.push(strike)
+  }
+  return strikes
+}
+
+// ─── Markets — prices are live-overridden in components, these are fallbacks ──
+// Strikes are generated dynamically around the fallback price
+// For accurate strikes, components should regenerate based on live price
+const SUI_PRICE_FALLBACK = 0.74
+const DEEP_PRICE_FALLBACK = 0.121
+const CETUS_PRICE_FALLBACK = 0.256
+
 export const MARKETS = [
   {
     id: 'sui-usdc',
     name: 'SUI/USDC',
     symbol: 'SUI',
-    price: 1.93,
+    price: SUI_PRICE_FALLBACK,
     change24h: 4.24,
     openInterest: 4120000,
     volume24h: 18360000,
     liquidity: 9200000,
-    strikes: [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95],
+    strikes: generateStrikes(SUI_PRICE_FALLBACK, 6),
     impliedVol: 68.4,
-    contractSize: 5,   // testnet only — reduced for demo — ~$74 exposure at $0.74
+    contractSize: 5,  // testnet — reduced for demo. Mainnet: 100
   },
   {
     id: 'deep-usdc',
     name: 'DEEP/USDC',
     symbol: 'DEEP',
-    price: 0.121,
+    price: DEEP_PRICE_FALLBACK,
     change24h: -2.18,
     openInterest: 2740000,
     volume24h: 8910000,
     liquidity: 4100000,
-    strikes: [0.09, 0.10, 0.11, 0.12, 0.13, 0.14],
+    strikes: generateStrikes(DEEP_PRICE_FALLBACK, 6),
     impliedVol: 82.1,
-    contractSize:50,  // 1 contract = 1000 DEEP — ~$121 exposure at $0.121
+    contractSize: 50,  // testnet — reduced for demo. Mainnet: 1000
   },
   {
     id: 'cetus-usdc',
     name: 'CETUS/USDC',
     symbol: 'CETUS',
-    price: 0.256,
+    price: CETUS_PRICE_FALLBACK,
     change24h: 6.71,
     openInterest: 1980000,
     volume24h: 6430000,
     liquidity: 3800000,
-    strikes: [0.14, 0.16, 0.18, 0.20, 0.22, 0.24],
+    strikes: generateStrikes(CETUS_PRICE_FALLBACK, 6),
     impliedVol: 74.9,
-    contractSize: 25,   // 1 contract = 500 CETUS — ~$128 exposure at $0.256
+    contractSize: 25,  // testnet — reduced for demo. Mainnet: 500
   },
 ]
 
-export const EXPIRIES = [
-  { label: 'Jun 20', date: '2026-06-20', daysLeft: 13 },
-  { label: 'Jun 27', date: '2026-06-27', daysLeft: 20 },
-  { label: 'Jul 4', date: '2026-07-04', daysLeft: 27 },
-]
+export const EXPIRIES = getNextFridays(3)
 
 export const ORDER_BOOK = {
   asks: [
     { price: 1.97, size: 12840, total: 78329 },
-    { price: 1.96, size: 8230, total: 66440 },
+    { price: 1.96, size: 8230,  total: 66440 },
     { price: 1.95, size: 15620, total: 57280 },
-    { price: 1.94, size: 9410, total: 41630 },
+    { price: 1.94, size: 9410,  total: 41630 },
     { price: 1.93, size: 13050, total: 32220 },
-    { price: 1.92, size: 6800, total: 19170 },
-    { price: 1.91, size: 4200, total: 12370 },
-    { price: 1.90, size: 8170, total: 8170 },
+    { price: 1.92, size: 6800,  total: 19170 },
+    { price: 1.91, size: 4200,  total: 12370 },
+    { price: 1.90, size: 8170,  total: 8170  },
   ],
   markPrice: 1.89,
   bids: [
-    { price: 1.88, size: 11230, total: 11230 },
-    { price: 1.87, size: 14780, total: 26010 },
-    { price: 1.86, size: 16420, total: 42430 },
-    { price: 1.85, size: 12640, total: 55070 },
-    { price: 1.84, size: 17210, total: 72280 },
-    { price: 1.83, size: 9840, total: 82120 },
-    { price: 1.82, size: 14300, total: 96420 },
-    { price: 1.81, size: 7620, total: 104040 },
+    { price: 1.88, size: 11230, total: 11230  },
+    { price: 1.87, size: 14780, total: 26010  },
+    { price: 1.86, size: 16420, total: 42430  },
+    { price: 1.85, size: 12640, total: 55070  },
+    { price: 1.84, size: 17210, total: 72280  },
+    { price: 1.83, size: 9840,  total: 82120  },
+    { price: 1.82, size: 14300, total: 96420  },
+    { price: 1.81, size: 7620,  total: 104040 },
   ],
 }
 
 export const RECENT_TRADES = [
-  { price: 1.89, size: 2349, time: '12:45:32', side: 'buy' },
+  { price: 1.89, size: 2349, time: '12:45:32', side: 'buy'  },
   { price: 1.88, size: 1120, time: '12:45:21', side: 'sell' },
-  { price: 1.89, size: 3580, time: '12:45:10', side: 'buy' },
-  { price: 1.90, size: 890,  time: '12:44:59', side: 'buy' },
+  { price: 1.89, size: 3580, time: '12:45:10', side: 'buy'  },
+  { price: 1.90, size: 890,  time: '12:44:59', side: 'buy'  },
   { price: 1.88, size: 4210, time: '12:44:48', side: 'sell' },
-  { price: 1.89, size: 1560, time: '12:44:37', side: 'buy' },
+  { price: 1.89, size: 1560, time: '12:44:37', side: 'buy'  },
   { price: 1.87, size: 2780, time: '12:44:09', side: 'sell' },
-  { price: 1.89, size: 650,  time: '12:44:42', side: 'buy' },
+  { price: 1.89, size: 650,  time: '12:44:42', side: 'buy'  },
 ]
 
 export const OPEN_POSITIONS = [
-  {
-    id: 'pos-1',
-    market: 'SUI/USDC',
-    type: 'CALL',
-    strike: 2.00,
-    expiry: 'Jun 20',
-    qty: 10,
-    premium: 0.42,
-    currentValue: 0.672,
-    pnl: 26.35,
-    pnlPct: 62.7,
-  },
-  {
-    id: 'pos-2',
-    market: 'SUI/USDC',
-    type: 'PUT',
-    strike: 1.80,
-    expiry: 'Jun 20',
-    qty: 5,
-    premium: 0.31,
-    currentValue: 0.155,
-    pnl: -8.12,
-    pnlPct: -52.4,
-  },
+  { id: 'pos-1', market: 'SUI/USDC', type: 'CALL', strike: 0.80, expiry: 'Jun 20', qty: 10, premium: 0.42, currentValue: 0.672, pnl: 26.35, pnlPct: 62.7 },
+  { id: 'pos-2', market: 'SUI/USDC', type: 'PUT',  strike: 0.70, expiry: 'Jun 20', qty: 5,  premium: 0.31, currentValue: 0.155, pnl: -8.12, pnlPct: -52.4 },
 ]
 
 export const EXPIRED_POSITIONS = [
-  {
-    id: 'exp-1',
-    market: 'SUI/USDC',
-    type: 'CALL',
-    strike: 1.70,
-    expiry: 'Jun 06',
-    premium: 0.25,
-    pnl: 15.80,
-    settled: true,
-  },
-  {
-    id: 'exp-2',
-    market: 'SUI/USDC',
-    type: 'PUT',
-    strike: 2.10,
-    expiry: 'Jun 06',
-    premium: 0.26,
-    pnl: -26.00,
-    settled: false,
-  },
+  { id: 'exp-1', market: 'SUI/USDC', type: 'CALL', strike: 0.70, expiry: 'Jun 06', premium: 0.25, pnl: 15.80, settled: true  },
+  { id: 'exp-2', market: 'SUI/USDC', type: 'PUT',  strike: 0.80, expiry: 'Jun 06', premium: 0.26, pnl: -26.00, settled: false },
 ]
 
 export const POOL_STATS = {
@@ -152,23 +163,23 @@ export const PORTFOLIO_STATS = {
 }
 
 export const TRANSACTION_HISTORY = [
-  { id: 'tx-1', date: 'Jun 11, 12:45', type: 'Buy PUT',            market: 'SUI/USDC',   strike: 2.00, expiry: 'Jun 20', qty: 10,   amount: -429.00 },
-  { id: 'tx-2', date: 'Jun 10, 18:32', type: 'Liquidity Deposit',  market: '-',           strike: null, expiry: '-',     qty: null, amount: -1000.00 },
-  { id: 'tx-3', date: 'Jun 09, 14:11', type: 'Buy CALL',           market: 'SUI/USDC',   strike: 1.80, expiry: 'Jun 20', qty: 5,    amount: -155.00 },
-  { id: 'tx-4', date: 'Jun 08, 14:11', type: 'Claim Settlement',   market: 'SUI/USDC',   strike: 1.70, expiry: 'Jun 06', qty: null, amount: 275.85 },
-  { id: 'tx-5', date: 'Jun 07, 10:45', type: 'Buy CALL',           market: 'CETUS/USDC', strike: 0.30, expiry: 'Jun 27', qty: 8,    amount: -224.00 },
+  { id: 'tx-1', date: 'Jun 11, 12:45', type: 'Buy PUT',           market: 'SUI/USDC',   strike: 0.80, expiry: 'Jun 20', qty: 10,   amount: -0.42 },
+  { id: 'tx-2', date: 'Jun 10, 18:32', type: 'Liquidity Deposit', market: '-',           strike: null, expiry: '-',     qty: null, amount: -5.00 },
+  { id: 'tx-3', date: 'Jun 09, 14:11', type: 'Buy CALL',          market: 'SUI/USDC',   strike: 0.75, expiry: 'Jun 20', qty: 5,    amount: -0.31 },
+  { id: 'tx-4', date: 'Jun 08, 14:11', type: 'Claim Settlement',  market: 'SUI/USDC',   strike: 0.70, expiry: 'Jun 06', qty: null, amount: 0.28  },
+  { id: 'tx-5', date: 'Jun 07, 10:45', type: 'Buy CALL',          market: 'CETUS/USDC', strike: 0.20, expiry: 'Jun 27', qty: 8,    amount: -0.18 },
 ]
 
 export const SETTLEMENT_HISTORY = [
-  { date: 'Jun 06, 2026',  market: 'SUI/USDC',   strike: 0.75, result: 'OTM', payout: 0,     txHash: '0x7a1f...bd2c' },
-  { date: 'May 30, 2026',  market: 'SUI/USDC',   strike: 0.80, result: 'ITM', payout: 32.50, txHash: '0x0d2c...e154' },
-  { date: 'May 23, 2026',  market: 'CETUS/USDC', strike: 0.20, result: 'ITM', payout: 18.45, txHash: '0x1f9a...b21f' },
+  { date: 'Jun 06, 2026',  market: 'SUI/USDC',   strike: 0.75, result: 'OTM', payout: 0,    txHash: '0x7a1f...bd2c' },
+  { date: 'May 30, 2026',  market: 'SUI/USDC',   strike: 0.80, result: 'ITM', payout: 0.32, txHash: '0x0d2c...e154' },
+  { date: 'May 23, 2026',  market: 'CETUS/USDC', strike: 0.20, result: 'ITM', payout: 0.18, txHash: '0x1f9a...b21f' },
 ]
 
 export const EXPIRING_POSITIONS = [
-  { id: 'exp-pos-1', market: 'SUI/USDC', type: 'CALL', strike: 0.75, currentPrice: 0.74, expectedPayout: 0,  qty: 10 },
-  { id: 'exp-pos-2', market: 'SUI/USDC', type: 'PUT',  strike: 0.80, currentPrice: 0.74, expectedPayout: 60, qty: 5  },
-  { id: 'exp-pos-3', market: 'SUI/USDC', type: 'CALL', strike: 0.70, currentPrice: 0.74, expectedPayout: 40, qty: 8  },
+  { id: 'exp-pos-1', market: 'SUI/USDC', type: 'CALL', strike: 0.75, currentPrice: 0.74, expectedPayout: 0,    qty: 10 },
+  { id: 'exp-pos-2', market: 'SUI/USDC', type: 'PUT',  strike: 0.80, currentPrice: 0.74, expectedPayout: 0.30, qty: 5  },
+  { id: 'exp-pos-3', market: 'SUI/USDC', type: 'CALL', strike: 0.70, currentPrice: 0.74, expectedPayout: 0.20, qty: 8  },
 ]
 
 export function generatePriceData(basePrice: number, days: number = 90) {
@@ -176,7 +187,6 @@ export function generatePriceData(basePrice: number, days: number = 90) {
   let price = basePrice * 0.6
   const now = Date.now()
   const dayMs = 24 * 60 * 60 * 1000
-
   for (let i = days; i >= 0; i--) {
     const time = Math.floor((now - i * dayMs) / 1000)
     const open = price
@@ -199,7 +209,7 @@ export const PLATFORM_STATS = {
 }
 
 export const SPARKLINE_DATA = {
-  'sui-usdc':   [0.95, 0.88, 0.91, 0.85, 0.79, 0.82, 0.76, 0.73, 0.78, 0.75, 0.72, 0.74],
-  'deep-usdc':  [0.145, 0.138, 0.142, 0.128, 0.131, 0.119, 0.124, 0.118, 0.122, 0.125, 0.123, 0.121],
-  'cetus-usdc': [0.032, 0.029, 0.031, 0.027, 0.024, 0.021, 0.019, 0.018, 0.020, 0.019, 0.018, 0.018],
+  'sui-usdc':   [0.68, 0.71, 0.69, 0.73, 0.72, 0.70, 0.74, 0.73, 0.75, 0.74, 0.73, 0.74],
+  'deep-usdc':  [0.110, 0.115, 0.112, 0.118, 0.120, 0.119, 0.121, 0.122, 0.120, 0.121, 0.120, 0.121],
+  'cetus-usdc': [0.230, 0.240, 0.235, 0.245, 0.250, 0.248, 0.252, 0.255, 0.253, 0.256, 0.254, 0.256],
 }
