@@ -627,7 +627,15 @@ onSuccess: (result) => {
                         tx.moveCall({ target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::options::close_position`, arguments: [tx.object(pos.id)] })
                         toast.loading('Closing...')
                         signAndExecute({ transaction: tx as any }, {
-                          onSuccess: (result) => { toast.dismiss(); toast.success(`Position closed! Tx: ${result.digest.slice(0, 8)}...`, { duration: 6000 }); refetchPositions() },
+                          onSuccess: (result) => {
+  toast.dismiss()
+  if ((result as any).effects?.status?.status === 'failure') {
+    toast.error(`Close failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown error'}`)
+    return
+  }
+  toast.success(`Position closed! Tx: ${result.digest.slice(0, 8)}...`, { duration: 6000 })
+  refetchPositions()
+},
                           onError: (e) => { toast.dismiss(); toast.error(`Failed: ${e.message.slice(0, 60)}`) },
                         })
                       }} className="w-8 h-8 rounded bg-white/5 hover:bg-danger/20 hover:text-danger flex items-center justify-center transition-colors">
