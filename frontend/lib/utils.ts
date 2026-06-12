@@ -20,7 +20,7 @@ export function formatNumber(value: number, decimals = 2): string {
 
 export function formatPnl(value: number): string {
   const sign = value >= 0 ? '+' : ''
-  return `${sign}${value.toFixed(2)} USDC`
+  return `${sign}${value.toFixed(4)} SUI`
 }
 
 export function formatPercent(value: number): string {
@@ -63,15 +63,17 @@ export function getUtilizationWarning(utilizationPct: number): string | null {
   return null
 }
 
-export function calculatePremium(
+// Calculate premium per unit (base Black-Scholes)
+// contractSize is applied SEPARATELY in the trade page so the UI can show
+// per-unit price and total price clearly
+export function calculatePremiumPerUnit(
   type: 'CALL' | 'PUT',
   strike: number,
   currentPrice: number,
   daysToExpiry: number,
   impliedVol: number = 0.68,
-  poolUtilizationPct: number = 0 // 0-100
+  poolUtilizationPct: number = 0
 ): number {
-  // Black-Scholes approximation
   const T = daysToExpiry / 365
   const sigma = impliedVol
   const S = currentPrice
@@ -88,7 +90,63 @@ export function calculatePremium(
     basePremium = intrinsic + timeValue
   }
 
-  // Apply utilization multiplier — higher utilization = more expensive options
   const multiplier = getUtilizationMultiplier(poolUtilizationPct)
-  return +(basePremium * multiplier).toFixed(4)
+  return +(basePremium * multiplier).toFixed(6)
+}
+
+// Full premium calculation including contract size
+// This is what the user ACTUALLY pays
+// contractSize = 100 for SUI, 1000 for DEEP, 500 for CETUS
+export function calculatePremium(
+  type: 'CALL' | 'PUT',
+  strike: number,
+  currentPrice: number,
+  daysToExpiry: number,
+  impliedVol: number = 0.68,
+  poolUtilizationPct: number = 0,
+  contractSize: number = 1  // default 1 for backwards compatibility
+): number {
+  const premiumPerUnit = calculatePremiumPerUnit(
+    type, strike, currentPrice, daysToExpiry, impliedVol, poolUtilizationPct
+  )
+  // Total premium = premium per unit × contract size
+  return +(premiumPerUnit * contractSize).toFixed(4)
+}
+
+// Calculate maximum payout for display purposes
+// payout = (settlementPrice - strike) × contractSize × quantity  [CALL]
+// payout = (strike - settlementPrice) × contractSize × quantity  [PUT]
+export function calculateMaxPayout(
+  type: 'CALL' | 'PUT',
+  strike: number,
+  targetPrice: number,
+  contractSize: number,
+  quantity: number
+): number {
+  if (type === 'CALL') {
+    return Math.max(0, (targetPrice - strike) * contractSize * quantity)
+  } else {
+    return Math.max(0, (strike - targetPrice) * contractSize * quantity)
+  }
+}
+
+// Calculate leverage ratio
+// leverage = (contractSize × strike) / premiumPerContract
+export function calculateLeverage(
+  strike: number,
+  contractSize: number,
+  premiumPerContract: number
+): number {
+  if (premiumPerContract <= 0) return 0
+  return +((contractSize * strike) / premiumPerContract).toFixed(1)
+}
+
+// Calculate total exposure
+// exposure = contractSize × quantity × strike
+export function calculateExposure(
+  strike: number,
+  contractSize: number,
+  quantity: number
+): number {
+  return +(strike * contractSize * quantity).toFixed(4)
 }

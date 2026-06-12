@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { X, ChevronDown, Plus, Minus, ChevronRight, BookOpen } from 'lucide-react'
-import { cn, calculatePremium, getUtilizationWarning } from '@/lib/utils'
+import { cn, calculatePremium, calculateExposure, calculateLeverage, getUtilizationWarning } from '@/lib/utils'
 import { RECENT_TRADES, EXPIRED_POSITIONS, MARKETS, EXPIRIES } from '@/lib/dummy-data'
 import { getOptionAdvisorInsight } from '@/lib/claude'
 import { usePrices } from '@/hooks/usePrices'
@@ -141,7 +141,6 @@ export default function TradePage() {
 
   const [selectedMarketId, setSelectedMarketId] = useState(MARKETS[0].id)
 
-  // Read market from URL params — fires when coming from market cards
   useEffect(() => {
     const market = searchParams.get('market')
     if (market && MARKETS.find(m => m.id === market)) {
@@ -150,6 +149,7 @@ export default function TradePage() {
   }, [searchParams])
 
   const selectedMarket = marketsWithPrices.find(m => m.id === selectedMarketId) || marketsWithPrices[0]
+  const contractSize = selectedMarket.contractSize // per-market contract size
   const { orderBook, loading: orderBookLoading } = useOrderBook(selectedMarketId)
   const [activeTab, setActiveTab] = useState<'CALLS' | 'PUTS'>('CALLS')
   const [optionType, setOptionType] = useState<OptionType>('CALL')
@@ -159,25 +159,39 @@ export default function TradePage() {
   const [showExpired, setShowExpired] = useState(false)
   const [centerTab, setCenterTab] = useState<'trade' | 'chain'>('trade')
 
-  // Update strike when market changes
   useEffect(() => {
     const market = MARKETS.find(m => m.id === selectedMarketId)
     if (market) setSelectedStrike(market.strikes[0])
   }, [selectedMarketId])
 
-  const premium = calculatePremium(optionType, selectedStrike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100, poolUtilization)
-  const totalPremium = +(premium * quantity).toFixed(4)
+  // Premium = base Black-Scholes × contractSize × quantity
+  // This is what gets passed to the contract
+  const premiumPerContract = calculatePremium(
+    optionType, selectedStrike, selectedMarket.price,
+    selectedExpiry.daysLeft, selectedMarket.impliedVol / 100,
+    poolUtilization, contractSize
+  )
+  const totalPremium = +(premiumPerContract * quantity).toFixed(4)
+
+  // Exposure = strike × contractSize × quantity
+  const totalExposure = calculateExposure(selectedStrike, contractSize, quantity)
+
+  // Leverage = exposure / totalPremium
+  const leverage = calculateLeverage(selectedStrike, contractSize, premiumPerContract)
+
   const maxAskTotal = Math.max(...orderBook.asks.map(a => a.total))
   const maxBidTotal = Math.max(...orderBook.bids.map(b => b.total))
 
   const handleBuy = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (totalPremium < 0.001) { toast.error('Premium too low — minimum 0.001 SUI'); return }
+
     const tx = new Transaction()
     const premiumMist = Math.floor(totalPremium * 1_000_000_000)
     const strikeMist = Math.floor(selectedStrike * 1_000_000_000)
     const expiryTs = Math.floor(new Date(selectedExpiry.date).getTime() / 1000)
     const [coin] = tx.splitCoins(tx.gas, [premiumMist])
+
     tx.moveCall({
       target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::options::buy_option`,
       arguments: [
@@ -186,15 +200,17 @@ export default function TradePage() {
         tx.pure.u64(strikeMist),
         tx.pure.u64(expiryTs),
         tx.pure.u64(quantity),
+        tx.pure.u64(contractSize),  // NEW — contract size enforced on-chain
         tx.pure.vector('u8', Array.from(new TextEncoder().encode(selectedMarket.name))),
         coin,
       ],
     })
+
     toast.loading('Buying option on Sui...')
     signAndExecute({ transaction: tx as any }, {
       onSuccess: (result) => {
         toast.dismiss()
-        const tweetText = `Just bought a ${optionType} option on $SUI at $${selectedStrike.toFixed(2)} strike on @VolaraProtocol! 🚀\n\nDecentralized options on Sui — hedge smarter, trade better.\n\nhttps://volara-gold.vercel.app\n\n#Sui #DeFi #Volara`
+        const tweetText = `Just bought a ${optionType} option on $${selectedMarket.symbol} at $${selectedStrike.toFixed(2)} strike on @VolaraProtocol! 🚀\n\nDecentralized options on Sui — hedge smarter, trade better.\n\nhttps://volara-gold.vercel.app\n\n#Sui #DeFi #Volara`
         const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
         toast.success(`Option bought! 🎉 Tx: ${result.digest.slice(0, 8)}...`, { duration: 6000 })
         setTimeout(() => {
@@ -223,10 +239,12 @@ export default function TradePage() {
           toast.error('❌ Pool has insufficient liquidity.')
         } else if (msg.includes('reject') || msg.includes('cancel') || msg.includes('denied')) {
           toast.error('Transaction rejected by wallet.')
-        } else if (msg.includes('EInsufficientPremium')) {
+        } else if (msg.includes('EInsufficientPremium') || msg.includes('EPremiumTooLow')) {
           toast.error('❌ Premium too low. Increase quantity.')
         } else if (msg.includes('EPoolUtilizationExceeded')) {
           toast.error('❌ Pool utilization too high. Try again later.')
+        } else if (msg.includes('EInvalidContractSize')) {
+          toast.error('❌ Invalid contract size.')
         } else {
           toast.error(`Transaction failed: ${msg.slice(0, 80)}`)
         }
@@ -303,7 +321,8 @@ export default function TradePage() {
 
           <div className="border-t border-white/5">
             <div className="px-2 py-1.5 text-xs font-mono text-text-secondary border-b border-white/5 flex items-center justify-between">
-              <span>RECENT TRADES</span><span className="text-primary text-xs">LIVE</span>
+              <span>RECENT TRADES</span>
+              <span className="text-yellow-400/70 text-xs font-mono">Simulated</span>
             </div>
             <div className="grid grid-cols-3 gap-1 px-2 py-1 text-xs font-mono text-text-secondary">
               <span>Price</span><span className="text-right">Size</span><span className="text-right">Time</span>
@@ -335,8 +354,8 @@ export default function TradePage() {
               <span className="text-primary font-mono text-sm">{selectedMarket.impliedVol}%</span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-text-secondary text-xs font-mono">Vol</span>
-              <span className="text-white font-mono text-sm">${(selectedMarket.volume24h / 1_000_000).toFixed(1)}M</span>
+              <span className="text-text-secondary text-xs font-mono">Size</span>
+              <span className="text-white font-mono text-sm">{contractSize}x</span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-text-secondary text-xs font-mono">OI</span>
@@ -367,6 +386,7 @@ export default function TradePage() {
             {centerTab === 'trade' ? (
               <div className="p-4 flex flex-col gap-4">
                 <div className="flex flex-col gap-3">
+                  {/* CALL/PUT */}
                   <div className="flex rounded-xl border border-white/10 p-0.5 gap-0.5 w-fit">
                     {(['CALL', 'PUT'] as OptionType[]).map(type => (
                       <button key={type} onClick={() => setOptionType(type)}
@@ -375,6 +395,15 @@ export default function TradePage() {
                         )}>{type}</button>
                     ))}
                   </div>
+
+                  {/* Contract size — fixed per market, shown for transparency */}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
+                    <span className="text-text-secondary text-xs font-mono">Contract Size:</span>
+                    <span className="text-primary text-xs font-mono font-bold">{contractSize} {selectedMarket.symbol} per contract</span>
+                    <span className="text-text-secondary text-xs font-mono ml-auto">≈ ${(contractSize * selectedMarket.price).toFixed(0)} exposure</span>
+                  </div>
+
+                  {/* Strike */}
                   <div>
                     <div className="text-text-secondary text-xs font-mono mb-1.5">Strike</div>
                     <div className="flex gap-1 overflow-x-auto pb-1">
@@ -386,6 +415,8 @@ export default function TradePage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Expiry */}
                   <div>
                     <div className="text-text-secondary text-xs font-mono mb-1.5">Expiry</div>
                     <div className="flex gap-1 flex-wrap">
@@ -399,29 +430,52 @@ export default function TradePage() {
                   </div>
                 </div>
 
+                {/* Quantity + Premium */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  <div className="flex items-center gap-2 bg-card border border-white/10 rounded-xl px-3 py-2">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Minus size={12} /></button>
-                    <input type="number" value={quantity} onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-12 bg-transparent text-center font-mono text-white text-sm focus:outline-none" />
-                    <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Plus size={12} /></button>
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="grid grid-cols-3 gap-3 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
-                      <div><div className="text-text-secondary text-xs font-mono mb-0.5">Premium</div><div className="text-white font-bold text-sm font-mono">{totalPremium} SUI</div></div>
-                      <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Loss</div><div className="text-danger font-bold text-sm font-mono">{totalPremium} SUI</div></div>
-                      <div><div className="text-text-secondary text-xs font-mono mb-0.5">Max Profit</div><div className="text-profit font-bold text-sm font-mono">Unlimited</div></div>
+                  <div>
+                    <div className="text-text-secondary text-xs font-mono mb-1.5">Contracts</div>
+                    <div className="flex items-center gap-2 bg-card border border-white/10 rounded-xl px-3 py-2">
+                      <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Minus size={12} /></button>
+                      <input type="number" value={quantity} onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-12 bg-transparent text-center font-mono text-white text-sm focus:outline-none" />
+                      <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/15 min-h-[32px]"><Plus size={12} /></button>
                     </div>
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    {/* Premium + Exposure + Leverage */}
+                    <div className="grid grid-cols-3 gap-2 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
+                      <div>
+                        <div className="text-text-secondary text-xs font-mono mb-0.5">Premium</div>
+                        <div className="text-white font-bold text-sm font-mono">{totalPremium} SUI</div>
+                      </div>
+                      <div>
+                        <div className="text-text-secondary text-xs font-mono mb-0.5">Exposure</div>
+                        <div className="text-primary font-bold text-sm font-mono">{totalExposure} SUI</div>
+                      </div>
+                      <div>
+                        <div className="text-text-secondary text-xs font-mono mb-0.5">Leverage</div>
+                        <div className="text-profit font-bold text-sm font-mono">{leverage}x</div>
+                      </div>
+                    </div>
+
+                    {/* Max Loss */}
+                    <div className="grid grid-cols-2 gap-2 bg-card/50 border border-white/10 rounded-xl px-3 py-2">
+                      <div>
+                        <div className="text-text-secondary text-xs font-mono mb-0.5">Max Loss</div>
+                        <div className="text-danger font-bold text-sm font-mono">{totalPremium} SUI</div>
+                      </div>
+                      <div>
+                        <div className="text-text-secondary text-xs font-mono mb-0.5">Max Profit</div>
+                        <div className="text-profit font-bold text-sm font-mono">Unlimited</div>
+                      </div>
+                    </div>
+
+                    {/* Warnings */}
                     {totalPremium > 0.5 && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-400/10 border border-yellow-400/30">
                         <span className="text-yellow-400 text-sm">⚠️</span>
-                        <span className="text-yellow-400 font-mono text-xs">High premium! Make sure you understand the risk before buying.</span>
-                      </div>
-                    )}
-                    {totalPremium > 1 && (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-danger/10 border border-danger/30">
-                        <span className="text-danger text-sm">🚨</span>
-                        <span className="text-danger font-mono text-xs">Very high premium ({totalPremium} SUI). Consider reducing quantity.</span>
+                        <span className="text-yellow-400 font-mono text-xs">High premium! Make sure you understand the risk.</span>
                       </div>
                     )}
                     {getUtilizationWarning(poolUtilization) && (
@@ -462,8 +516,8 @@ export default function TradePage() {
                       {selectedMarket.strikes.map(strike => {
                         const isITMCall = selectedMarket.price > strike
                         const isITMPut = selectedMarket.price < strike
-                        const callPremium = calculatePremium('CALL', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100)
-                        const putPremium = calculatePremium('PUT', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100)
+                        const callPremium = calculatePremium('CALL', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100, 0, contractSize)
+                        const putPremium = calculatePremium('PUT', strike, selectedMarket.price, selectedExpiry.daysLeft, selectedMarket.impliedVol / 100, 0, contractSize)
                         const callBid = +(callPremium * 0.95).toFixed(4)
                         const callAsk = +(callPremium * 1.05).toFixed(4)
                         const putBid = +(putPremium * 0.95).toFixed(4)
@@ -502,7 +556,7 @@ export default function TradePage() {
             <AIAdvisorBox type={optionType} strike={selectedStrike} market={selectedMarket} expiryDays={selectedExpiry.daysLeft} />
             <button onClick={handleBuy}
               className={cn('w-full py-3 rounded-xl font-syne font-bold text-white text-sm transition-all min-h-[48px]', optionType === 'CALL' ? 'btn-call' : 'btn-put')}>
-              Buy {optionType} — {totalPremium} SUI
+              Buy {quantity} {optionType} — {totalPremium} SUI
             </button>
             <div className="flex items-center justify-between text-xs font-mono text-text-secondary">
               <span>Balance</span>
@@ -596,7 +650,7 @@ export default function TradePage() {
                         <span className="text-text-secondary text-xs font-mono">${pos.strike.toFixed(2)} · {pos.expiry}</span>
                       </div>
                       <div className={cn('text-xs font-mono font-bold', pos.pnl >= 0 ? 'text-profit' : 'text-danger')}>
-                        {pos.pnl >= 0 ? '+' : ''}{pos.pnl.toFixed(2)} USDC
+                        {pos.pnl >= 0 ? '+' : ''}{pos.pnl.toFixed(4)} SUI
                       </div>
                     </div>
                   ))}
