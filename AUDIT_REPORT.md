@@ -1,5 +1,5 @@
 # Volara Protocol — Full Security Audit Report
-## Version 1.0 | June 8, 2026 | Sui Testnet
+## Version 1.0 | June 2026 | Sui Testnet
 
 ---
 
@@ -7,16 +7,16 @@
 
 Volara is a decentralized options trading protocol built on Sui blockchain. This report documents the full security audit conducted prior to hackathon submission, identifying all vulnerabilities found, fixes applied, and known limitations before mainnet deployment.
 
-Status: Production-quality testnet prototype
-Security: Security-reviewed testnet implementation
+**Status:** Production-quality testnet prototype
+**Security:** Security-reviewed testnet implementation
 
-| Category | Rating | Notes |
-|----------|--------|-------|
-| Smart Contract Security | 8/10 | Critical issues fixed, economic caps added |
-| Oracle Security | 8.5/10 | Pyth only, staleness checks, confidence validation |
-| Keeper Reliability | 9/10 | Duplicate protection, fail-closed, health checks |
-| Frontend Integrity | 8/10 | Dynamic pricing, utilization warnings |
-| Economic Design | 7.5/10 | Utilization cap added, insurance fund pending |
+| Category | Notes |
+|----------|-------|
+| Smart Contract Security | Critical issues fixed, economic caps added |
+| Oracle Security | Pyth only, staleness checks, confidence validation |
+| Keeper Reliability | Duplicate protection, fail-closed, health checks |
+| Frontend Integrity | Dynamic pricing, utilization warnings, on-chain status checks |
+| Economic Design | Utilization cap added, insurance fund on roadmap |
 
 ---
 
@@ -53,16 +53,16 @@ Security: Security-reviewed testnet implementation
 
 ---
 
-## Deployed Contracts (Sui Testnet)
+## Deployed Contracts (Sui Testnet — 3rd Deploy)
 
 | Contract | Object ID |
 |----------|-----------|
-| **Package** | `0xe12cce4c86a29f9820ca0b88970509da32e69eb439abf0e1c66ce3a6b92c52b0` |
-| **LiquidityPool** | `0x4fb50180ff08cd6a498028280a679b3136032d80ac7a3ea370b3c0676f82f9bc` |
-| **SettlementRegistry** | `0xdb4c6765139c3a77c75e357fe5212dca338d1bd48691ed819e56f4386bac89a8` |
-| **OrderBook** | `0xc767e299f9cfaec44e6c82b71a5caca4626c78ffc90130a1b3ca76c2df0fef6a` |
-| **Treasury** | `0xe1982d0384d0b1317c2c02970c7b5f00185bddc5749dd5c4e5a479829b8c1d52` |
-| **AdminCap (pool)** | `0xfc098746b741e84e5c1da8969a4d5fa52cc190853e16d66a09c3ec752dc0f3c5` |
+| **Package** | `0xa59e822ec1a3350add1a32f5967289624f2a693d4265a610958413c7af5c5495` |
+| **LiquidityPool** | `0x21d2c428375c91c987acc76d727eed920af6e0d82e6c118c3138f6d80bc262b9` |
+| **SettlementRegistry** | `0xe0cfc0130626ddea4d7b06cb18071a5ba65c00a0d72f2e7eb042f3b1abba870b` |
+| **OrderBook** | `0x244996f7478d8b34efc36fdc126a0e4da194eaed325bbe8dd1f89f100d7f2c6d` |
+| **Treasury** | `0x2caf95a14ef2d3f86e52c78466712e23d40c8e3f2b96075d2379cde0f35dce42` |
+| **AdminCap** | `0xa9e6f8f7387393190c4ede9248d463168b1e12e1e1e6cd0bd069b55c04e1bcdc` |
 
 **Deployer:** `0x7112f788107395468d7433df01900b155ecc88ee4907db0e56aeaf66b4ad3367`
 **Keeper Wallet:** `0x0e3fb0258cb9d09cc81329aeeddb8a32dee425ee66a863909e816c80a4eb9c5c`
@@ -75,12 +75,14 @@ Security: Security-reviewed testnet implementation
 Handles CALL and PUT option minting, buying, and closing.
 
 **Key functions:**
-- `buy_option()` — mints OptionPosition object, collects premium
+- `buy_option()` — mints OptionPosition object, collects premium, validates contract_size
 - `close_position()` — burns option before expiry (no payout)
 - `destroy_option()` — internal burn after settlement
 
 **Security features:**
 - ✅ Minimum premium enforced on-chain: `MIN_PREMIUM_MIST = 1_000_000` (0.001 SUI)
+- ✅ Contract size validation: min 1, max 10000 — enforced on-chain
+- ✅ Contract size stored in OptionPosition object — never trusted from keeper/frontend at settlement
 - ✅ Pool pause check before buying
 - ✅ Utilization check before accepting new options
 - ✅ Owner check on close_position
@@ -114,41 +116,31 @@ Handles option expiry settlement and payout distribution.
 **Key functions:**
 - `settle_option()` — owner-only settlement
 - `keeper_settle()` — permissionless settlement after expiry
-- `calculate_payout()` — deterministic payout math
+- `calculate_payout()` — deterministic payout math including contract_size
 - `has_been_settled()` — duplicate check getter
 
 **Security features:**
 - ✅ `sui::clock::Clock` — tamper-proof on-chain timestamp
 - ✅ `MAX_PRICE_AGE_MS = 300_000` (5 minute price staleness limit)
 - ✅ Double settlement protection (on-chain registry check)
-- ✅ `keeper_settle()` — permissionless after expiry (enables keeper bots)
+- ✅ `keeper_settle()` — permissionless after expiry
 - ✅ Option object burned after settlement
 - ✅ Settlement fee calculated before payout
 - ✅ Invalid price check (price > 0)
+- ✅ contract_size read from option object — never passed by keeper
 
 **Settlement math:**
 ```
-CALL payout = max(0, settlement_price - strike) × quantity
-PUT payout  = max(0, strike - settlement_price) × quantity
+CALL payout = max(0, settlement_price - strike) × quantity × contract_size
+PUT payout  = max(0, strike - settlement_price) × quantity × contract_size
 Net payout  = gross_payout - settlement_fee (0.1%)
 ```
 
 ### 4. `fees.move`
 Protocol fee collection and treasury management.
 
-**Key functions:**
-- `calculate_fee()` — 0.3% trade fee
-- `calculate_settlement_fee()` — 0.1% settlement fee
-- `collect_fee_coin()` — internal fee collection
-- `withdraw_treasury()` — admin treasury withdrawal
-
 ### 5. `order_book.move`
 On-chain order placement and matching.
-
-**Key functions:**
-- `place_order()` — place limit order
-- `cancel_order()` — cancel existing order
-- `match_orders()` — match buy/sell orders
 
 ---
 
@@ -158,226 +150,63 @@ On-chain order placement and matching.
 
 **[FIXED] C-01: Fake Timestamp Parameter**
 - **Severity:** Critical
-- **Description:** Original `settle_option()` accepted `current_timestamp: u64` as parameter. Any user could pass a fake timestamp to settle options early or prevent settlement.
-- **Fix:** Replaced with `clock: &Clock` — Sui's tamper-proof on-chain clock. Timestamp derived via `clock::timestamp_ms(clock)`.
-- **Status:** ✅ FIXED in v1.0
+- **Fix:** Replaced with `clock: &Clock` — Sui's tamper-proof on-chain clock.
+- **Status:** ✅ FIXED
 
 **[FIXED] C-02: Keeper Permission Denied**
 - **Severity:** Critical
-- **Description:** Original settle_option had `assert!(owner == sender)` — keeper bot could not settle on behalf of users. Bot was functionally broken.
-- **Fix:** Added `keeper_settle()` function with no owner check. Anyone can call after expiry. This follows the standard keeper pattern used by Aave, Chainlink, etc.
-- **Status:** ✅ FIXED in v1.0
+- **Fix:** Added `keeper_settle()` — permissionless after expiry. Standard keeper pattern.
+- **Status:** ✅ FIXED
 
 **[FIXED] C-03: No Minimum Premium Validation**
 - **Severity:** Critical
-- **Description:** Contract accepted any premium amount including near-zero. A technically sharp user could bypass the frontend and buy options for dust amounts.
-- **Fix:** `MIN_PREMIUM_MIST = 1_000_000` (0.001 SUI) enforced in `buy_option()`. Reverts with `EPremiumTooLow` if violated.
-- **Status:** ✅ FIXED in v1.0
+- **Fix:** `MIN_PREMIUM_MIST = 1_000_000` (0.001 SUI) enforced in `buy_option()`.
+- **Status:** ✅ FIXED
 
 **[FIXED] C-04: No Pool Utilization Cap**
 - **Severity:** Critical
-- **Description:** Pool had no exposure limit. A whale could buy enough options to exceed pool balance, making it insolvent.
-- **Fix:** `MAX_UTILIZATION_BPS = 7000` (70%). `check_utilization()` called before every option purchase. Reverts with `EPoolUtilizationExceeded` if exceeded.
-- **Status:** ✅ FIXED in v1.0
+- **Fix:** `MAX_UTILIZATION_BPS = 7000` (70%). Reverts with `EPoolUtilizationExceeded`.
+- **Status:** ✅ FIXED
+
+**[FIXED] C-05: Contract Size Not Enforced On-Chain**
+- **Severity:** Critical
+- **Description:** Original contract did not validate or store contract_size. Frontend could pass any value, enabling payout manipulation.
+- **Fix:** contract_size added as parameter to `buy_option()`, validated (min 1, max 10000), stored in OptionPosition struct. Payout calculation reads contract_size from the option object — never from keeper or frontend input.
+- **Status:** ✅ FIXED
 
 ---
 
 ### 🟠 IMPORTANT — All Fixed
 
-**[FIXED] I-01: No Price Staleness Check**
-- **Severity:** Important
-- **Description:** No validation on price age. Stale prices from hours ago could be passed to manipulate settlement outcomes.
-- **Fix:** `MAX_PRICE_AGE_MS = 300_000` (5 minutes). Settlement reverts with `EPriceTooStale` if price timestamp is older than limit.
-- **Status:** ✅ FIXED in v1.0
-
-**[FIXED] I-02: Double Settlement Not Fully Protected**
-- **Severity:** Important
-- **Description:** Only `is_settled` flag on option object. If object was somehow duplicated or keeper ran twice simultaneously, double payout was theoretically possible.
-- **Fix:** Added on-chain registry check. `has_been_settled()` checks `settled_options` table before processing. Two layers of protection now.
-- **Status:** ✅ FIXED in v1.0
-
-**[FIXED] I-03: No Emergency Pause**
-- **Severity:** Important
-- **Description:** No way to halt protocol if exploit was discovered. Funds would continue flowing.
-- **Fix:** `set_paused()` function via AdminCap. All user-facing functions check `!pool.paused`. Admin can halt deposits, withdrawals, and new options.
-- **Status:** ✅ FIXED in v1.0
-
-**[FIXED] I-04: CoinGecko Settlement Fallback**
-- **Severity:** Important
-- **Description:** Keeper bot fell back to CoinGecko if Pyth failed. CoinGecko is centralized and can be manipulated or delayed during settlement windows.
-- **Fix:** Removed CoinGecko fallback entirely. Keeper now FAILS CLOSED — if Pyth unavailable, settlement is paused and Telegram alert sent. Never degrades to centralized source.
-- **Status:** ✅ FIXED in v1.0
-
-**[FIXED] I-05: Keeper Duplicate Settlement**
-- **Severity:** Important
-- **Description:** Keeper ran every 60 seconds without checking if option was already settled. Race condition could cause double settlement.
-- **Fix:** `hasBeenSettled()` check before every settlement call. Confirmed against on-chain registry. Skipped if already settled.
-- **Status:** ✅ FIXED in v1.0
+**[FIXED] I-01: No Price Staleness Check** — ✅ FIXED
+**[FIXED] I-02: Double Settlement Not Fully Protected** — ✅ FIXED
+**[FIXED] I-03: No Emergency Pause** — ✅ FIXED
+**[FIXED] I-04: CoinGecko Settlement Fallback** — ✅ FIXED (fail-closed)
+**[FIXED] I-05: Keeper Duplicate Settlement** — ✅ FIXED
 
 ---
 
 ### 🟡 NICE TO HAVE — Acknowledged, Roadmap
 
-**[ROADMAP] N-01: Frontend-Only Pricing**
-- **Severity:** Low for testnet
-- **Description:** Black-Scholes premium calculation happens in `utils.ts` (frontend). Minimum premium enforced on-chain but exact pricing not validated.
-- **Mitigation:** Minimum premium floor prevents dust attacks. Dynamic utilization multiplier adjusts pricing based on pool stress.
-- **Roadmap:** V1.1 — on-chain pricing oracle with Pyth volatility feeds.
-
-**[ROADMAP] N-02: No Insurance Fund**
-- **Severity:** Low for testnet
-- **Description:** No emergency reserve if pool payouts exceed premium income in extreme scenario.
-- **Roadmap:** V1.1 — 5% of all fees directed to insurance fund address.
-
-**[ROADMAP] N-03: Static IV**
-- **Severity:** Low for testnet
-- **Description:** Implied volatility is hardcoded per market (68.4% for SUI). Does not update dynamically.
-- **Roadmap:** V2.0 — on-chain IV engine using realized volatility from Pyth price history.
-
-**[ROADMAP] N-04: No LP Hedging**
-- **Severity:** Low for testnet
-- **Description:** LPs have directional exposure — if SUI pumps, all CALL writers lose. No delta hedging mechanism.
-- **Roadmap:** V2.0 — delta hedging vaults for LPs.
+**[ROADMAP] N-01: Frontend-Only Pricing** — V1.1 on-chain pricing oracle
+**[ROADMAP] N-02: No Insurance Fund** — V1.1 5% of fees to reserve
+**[ROADMAP] N-03: Static IV** — V2.0 dynamic IV from Pyth
+**[ROADMAP] N-04: No LP Hedging** — V2.0 delta hedging vaults
 
 ---
 
 ## Keeper Bot Security
 
-**Deployment:** Railway (24/7)
-**Check interval:** 60 seconds
-**Oracle:** Pyth Network only
+**Deployment:** Railway (24/7) | **Check interval:** 60 seconds | **Oracle:** Pyth only
 
-**Security properties:**
 - ✅ Fail closed — pauses if Pyth unavailable
 - ✅ Confidence interval validation (rejects if >2% spread)
 - ✅ Price staleness check (max 60 seconds)
 - ✅ Duplicate settlement protection
-- ✅ Uses `keeper_settle()` — no owner privileges needed
-- ✅ Passes `Clock` object — tamper-proof timestamp on-chain
-- ✅ Health check every 10 minutes — alerts if balance < 0.1 SUI
+- ✅ contract_size read from option object on-chain
+- ✅ Passes `Clock` object — tamper-proof timestamp
+- ✅ Health check every 10 minutes
 - ✅ Telegram notifications on settlement and failures
-
-**Failure modes handled:**
-| Failure | Behavior |
-|---------|----------|
-| Pyth down | Pause settlement, send Telegram alert |
-| Price too stale | Skip round, log warning |
-| Confidence too wide | Skip round, log warning |
-| Already settled | Skip silently |
-| Transaction failed | Log error, send Telegram alert |
-| Low balance | Send Telegram warning |
-
----
-
-## Frontend Security
-
-**Deployment:** Vercel
-**Framework:** Next.js 14 App Router
-
-**Security properties:**
-- ✅ AI disclaimer on insights page
-- ✅ Testnet badge on all pages
-- ✅ Minimum premium check before transaction
-- ✅ Pool utilization warning displayed
-- ✅ Dynamic premium pricing (utilization multiplier)
-- ✅ Error messages for all contract error codes
-- ✅ Wallet disconnect clears all state
-- ✅ No sensitive keys in client bundle
-
-**Pricing transparency:**
-```
-Base premium = Black-Scholes approximation
-Final premium = Base premium × utilization_multiplier
-
-Utilization 0-40%:  1.0x (normal)
-Utilization 40-60%: 1.25x (+25%)
-Utilization 60-70%: 1.5x (+50%)
-Utilization 70-80%: 2.0x (+100%)
-Utilization 80%+:   2.5x (+150%)
-```
-
----
-
-## Full Feature Inventory
-
-### Smart Contracts (5 modules)
-- [x] CALL option minting and buying
-- [x] PUT option minting and buying
-- [x] Option object ownership (native Sui object)
-- [x] Position closing before expiry
-- [x] Automatic settlement at expiry
-- [x] Permissionless keeper settlement
-- [x] LP deposit with share minting
-- [x] LP withdrawal with share burning
-- [x] Premium collection into pool
-- [x] Settlement payout from pool
-- [x] 0.3% trade fee
-- [x] 0.1% settlement fee
-- [x] Treasury management
-- [x] On-chain order placement
-- [x] Order cancellation
-- [x] Order matching
-- [x] 70% utilization cap
-- [x] Emergency pause
-- [x] Admin fee withdrawal
-- [x] Tamper-proof clock timestamps
-- [x] Price staleness validation
-- [x] Double settlement protection
-- [x] Minimum premium enforcement
-
-### Frontend (7 pages)
-- [x] Landing page with animated terminal
-- [x] Live SUI/DEEP/CETUS prices (CoinGecko)
-- [x] TradingView candlestick charts
-- [x] Real-time order book
-- [x] Options chain view (all strikes, bid/ask, delta)
-- [x] CALL/PUT toggle
-- [x] Strike price selection
-- [x] Expiry selection (Jun 20, Jun 27, Jul 4)
-- [x] Quantity input
-- [x] Dynamic premium calculator
-- [x] Slippage warning (yellow >0.5 SUI, red >1 SUI)
-- [x] Pool utilization warning
-- [x] Buy option → real on-chain transaction
-- [x] Twitter share after buying
-- [x] Volara AI trade analysis (real Claude API)
-- [x] Probability of profit
-- [x] Breakeven price
-- [x] Risk level (Low/Medium/High)
-- [x] LP deposit → real on-chain transaction
-- [x] LP withdrawal → real on-chain transaction
-- [x] Real pool balance from chain
-- [x] Real APY from on-chain premiums
-- [x] Pool utilization from chain
-- [x] AI pool insight
-- [x] Real positions from wallet (on-chain)
-- [x] Real transaction history from Sui RPC
-- [x] Clickable tx hashes → Suiscan
-- [x] Greeks display (Delta, Gamma, Theta, Vega)
-- [x] Close position → real on-chain transaction
-- [x] Settlement countdown (dynamic next Friday)
-- [x] Payout calculator (interactive slider)
-- [x] Claim settled options
-- [x] AI insights page (full analysis)
-- [x] Wallet connect/disconnect (Slush)
-- [x] Real balance in navbar
-- [x] Mobile responsive (hamburger menu)
-- [x] Skeleton loaders
-- [x] Empty states with CTAs
-- [x] Testnet disclaimer badge
-- [x] AI disclaimer
-
-### Keeper Bot
-- [x] Pyth oracle integration
-- [x] Price freshness validation
-- [x] Confidence interval check
-- [x] Fail-closed behavior
-- [x] Duplicate settlement protection
-- [x] Health monitoring
-- [x] Telegram notifications
-- [x] 60-second check loop
-- [x] Detailed logging
-- [x] Running 24/7 on Railway
 
 ---
 
@@ -391,60 +220,30 @@ Utilization 80%+:   2.5x (+150%)
 | **LP** | Deposit/withdraw liquidity | Affect individual option outcomes |
 | **Pyth** | Settlement price source | Bypassed if confidence too wide |
 
-**Key guarantee:** Even if keeper and frontend both fail, options can be settled by their owners directly via `settle_option()`. The chain is the source of truth.
-
 ---
 
-## What This Means For Judges
-
-### Honest Hackathon Assessment
+## Honest Hackathon Assessment
 
 **What works completely:**
 - Full on-chain options with real Sui objects
 - Real LP pool with real SUI deposits
-- Automated settlement via keeper
+- Automated settlement via keeper bot
 - Pyth oracle for manipulation-resistant prices
 - AI-assisted trade analysis
+- Contract size enforced and stored on-chain
 
 **What is simplified for testnet:**
-- Premium pricing is frontend-calculated (minimum enforced on-chain)
-- IV is static per market
-- No insurance fund
-- No LP delta hedging
+- Premium pricing is frontend-calculated (minimum floor enforced on-chain)
+- IV is static per market (dynamic in V2.0)
+- No insurance fund (V1.1 roadmap)
+- No LP delta hedging (V2.0 roadmap)
+- Contract sizes reduced for testnet demo (SUI: 5x vs mainnet 100x)
 
-**What ships in V1.1 before mainnet:**
-- On-chain pricing validation
-- Insurance fund (5% of fees)
-- Dynamic IV from Pyth
-- Circuit breakers
-
-### Why Sui Specifically
-
-Each option IS a native Move object in your wallet — not an account balance mapping. This enables:
-- Transferable positions
-- Object-native ownership
-- Parallel settlement (multiple options settle simultaneously)
-- Composability with other Sui protocols
-- Sub-second finality
-
-This is not possible on EVM without significant complexity.
+**Why Sui specifically:**
+Each option IS a native Move object in your wallet — not an account balance mapping. This enables transferable positions, object-native ownership, parallel settlement, and composability with other Sui protocols.
 
 ---
 
-## Conclusion
-
-Volara is a production-quality testnet prototype with:
-- All critical security vulnerabilities patched
-- Honest documentation of known limitations
-- Clear roadmap to mainnet-ready state
-- Genuine on-chain infrastructure (not mocked)
-
-**Rating: 8.5/10 for testnet prototype**
-
-The architecture is correct. The economic model makes sense. The security gaps are all known, documented, and either fixed or on the roadmap. This is exactly the maturity level expected of a serious early-stage DeFi protocol.
-
----
-
-*Audit conducted by Volara team | June 8, 2026*
+*Audit conducted by Volara team | June 2026*
 *GitHub: https://github.com/semi1390/volara*
 *Live: https://volara-gold.vercel.app*

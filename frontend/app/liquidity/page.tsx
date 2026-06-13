@@ -59,23 +59,39 @@ export default function LiquidityPage() {
 
   // Fetch user LP shares directly from the pool's lp_shares table
   // Table<address, u64> — key is user address
-  useEffect(() => {
-    if (!account?.address || !process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID) return
-    const fetchShares = async () => {
-      try {
-        const result = await client.getDynamicFieldObject({
-          parentId: process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!,
-          name: { type: 'address', value: account.address },
-        })
-        const shares = parseInt((result?.data?.content as any)?.fields?.value ?? '0')
+ useEffect(() => {
+  if (!account?.address || !process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID) return
+  const fetchShares = async () => {
+    try {
+      const tx = new Transaction()
+      tx.moveCall({
+        target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::get_lp_share`,
+        arguments: [
+          tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!),
+          tx.pure.address(account.address),
+        ],
+      })
+      const result = await client.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: account.address,
+      })
+      const returnVal = result?.results?.[0]?.returnValues?.[0]
+      if (returnVal) {
+        const bytes = returnVal[0]
+        const shares = parseInt(
+          bytes.reduce((acc: bigint, byte: number, i: number) =>
+            acc + (BigInt(byte) << BigInt(8 * i)), BigInt(0)).toString()
+        )
         setUserShares(shares)
-      } catch {
-        // User has no shares yet — this is expected for new users
+      } else {
         setUserShares(0)
       }
+    } catch {
+      setUserShares(0)
     }
-    fetchShares()
-  }, [account?.address, poolData, client])
+  }
+  fetchShares()
+}, [account?.address, poolData, client])
 
   const poolFields = poolData?.data?.content?.dataType === 'moveObject'
     ? (poolData.data.content.fields as any)
