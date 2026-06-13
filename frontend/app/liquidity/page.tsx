@@ -145,13 +145,14 @@ export default function LiquidityPage() {
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return }
    if (parseFloat(amount) > walletBalance - 0.05) { toast.error(`Insufficient balance. You have ${walletBalance} SUI`); return }
 
-    const tx = new Transaction()
-    const amountMist = Math.floor(parseFloat(amount) * 1_000_000_000)
-    const [coin] = tx.splitCoins(tx.gas, [amountMist])
-    tx.moveCall({
-      target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::deposit`,
-      arguments: [tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!), coin],
-    })
+   const tx = new Transaction()
+const amountMist = Math.floor(parseFloat(amount) * 1_000_000_000)
+tx.setGasBudget(10_000_000) // explicit gas budget
+const [coin] = tx.splitCoins(tx.gas, [amountMist])
+tx.moveCall({
+  target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::liquidity_pool::deposit`,
+  arguments: [tx.object(process.env.NEXT_PUBLIC_LIQUIDITY_POOL_ID!), coin],
+})
     toast.loading('Depositing SUI into pool...')
     signAndExecute({ transaction: tx as any }, {
       onSuccess: (result) => {
