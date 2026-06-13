@@ -51,11 +51,11 @@ export default function LiquidityPage() {
     options: { showContent: true },
   })
 
-  const { data: balanceData } = useSuiClientQuery(
-    'getBalance',
-    { owner: account?.address ?? '' },
-    { enabled: !!account?.address }
-  )
+const { data: balanceData, refetch: refetchBalance } = useSuiClientQuery(
+  'getBalance',
+  { owner: account?.address ?? '' },
+  { enabled: !!account?.address }
+)
 
   // Fetch user LP shares directly from the pool's lp_shares table
   // Table<address, u64> — key is user address
@@ -165,6 +165,7 @@ tx.moveCall({
   if (newBalance > realPoolBalance) {
     toast.success('Deposited successfully! 🎉')
     setAmount('')
+    refetchBalance()
   } else {
     toast.error('Transaction may have failed — check Suiscan')
   }
