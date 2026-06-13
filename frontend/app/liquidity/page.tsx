@@ -193,7 +193,7 @@ tx.moveCall({
       ],
     })
     toast.loading('Withdrawing SUI from pool...')
-    signAndExecute({ transaction: tx as any }, {
+   signAndExecute({ transaction: tx as any, options: { showEffects: true } }, {
       onSuccess: (result) => {
         toast.dismiss()
         if ((result as any).effects?.status?.status === 'failure') {
