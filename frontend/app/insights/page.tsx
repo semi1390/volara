@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Brain, Zap, TrendingUp } from 'lucide-react'
  import { MARKETS, generateStrikes } from '@/lib/dummy-data'
 import { getOptionAdvisorInsight } from '@/lib/claude'
@@ -19,7 +19,11 @@ const marketsWithPrices = MARKETS.map(m => {
   const [selectedMarketId, setSelectedMarketId] = useState(MARKETS[0].id)
   const selectedMarket = marketsWithPrices.find(m => m.id === selectedMarketId) || marketsWithPrices[0]
   const [optionType, setOptionType] = useState<'CALL' | 'PUT'>('CALL')
-  const [strike, setStrike] = useState(selectedMarket.strikes[0])
+const [strike, setStrike] = useState(selectedMarket.strikes[0])
+
+useEffect(() => {
+  setStrike(selectedMarket.strikes[0])
+}, [selectedMarketId, selectedMarket.strikes[0]])
   const [expiry, setExpiry] = useState(13)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
