@@ -217,7 +217,7 @@ const marketsWithPrices = MARKETS.map(m => {
     })
 
     toast.loading('Buying option on Sui...')
-   signAndExecute({ transaction: tx as any, options: { showEffects: true } }, {
+   signAndExecute({ transaction: tx as any }, {
 onSuccess: (result) => {
   toast.dismiss()
   if ((result as any).effects?.status?.status === 'failure') {
@@ -630,7 +630,7 @@ onSuccess: (result) => {
                         const tx = new Transaction()
                         tx.moveCall({ target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::options::close_position`, arguments: [tx.object(pos.id)] })
                         toast.loading('Closing...')
-                       signAndExecute({ transaction: tx as any, options: { showEffects: true } }, {
+                      signAndExecute({ transaction: tx as any }, {
                           onSuccess: (result) => {
   toast.dismiss()
   if ((result as any).effects?.status?.status === 'failure') {
