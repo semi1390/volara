@@ -291,7 +291,7 @@ export default function LandingPage() {
         <h2 className="font-syne font-bold text-2xl md:text-4xl text-white mb-8 md:mb-12">Why Volara?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {[
-            { icon: <Brain className="text-primary" size={24} />, title: 'AI-Assisted Analysi', desc: 'Volara AI interprets risk, estimates profit probability, and explains every trade in plain English. Black-Scholes powers the math.',},
+            { icon: <Brain className="text-primary" size={24} />, title: 'AI-Assisted Analysis', desc: 'Volara AI interprets risk, estimates profit probability, and explains every trade in plain English. Black-Scholes powers the math.',},
             { icon: <Zap className="text-profit" size={24} />, title: 'Instant Settlement', desc: "Sui's sub-second finality means options settle the moment they expire. No waiting, no custodians." },
             { icon: <TrendingUp className="text-primary" size={24} />, title: 'Deep Liquidity', desc: 'Competitive premiums from deep liquidity pools and professional market makers incentivized by protocol fees.' },
           ].map((feature) => (
@@ -349,7 +349,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-profit/5" />
           <div className="relative z-10">
             <h2 className="font-syne font-extrabold text-3xl md:text-5xl text-white mb-3 md:mb-4">Ready to trade smarter?</h2>
-            <p className="text-text-secondary font-mono mb-8 md:mb-10 text-sm md:text-base">Join thousands of traders hedging and speculating with Volara.</p>
+            <p className="text-text-secondary font-mono mb-8 md:mb-10 text-sm md:text-base">Be among the first traders hedging and speculating on Sui with Volara.</p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4">
               <Link href="/trade" className="w-full sm:w-auto">
                 <button className="w-full px-8 md:px-10 py-3.5 md:py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-base md:text-lg">
