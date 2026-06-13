@@ -70,7 +70,7 @@ export default function PortfolioPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
           <StatCard label="Portfolio Value" value={`${positions.reduce((sum, p) => sum + p.premium, 0).toFixed(4)} SUI`} />
-          <StatCard label="Total Positions Ever" value={`${positions.length + 2}`} />
+          <StatCard label="Total Positions Ever" value={`${positions.length}`} />
           <StatCard label="Active Positions" value={`${positions.length}`} />
           <StatCard label="Total Premiums Paid" value={positions.reduce((sum, p) => sum + p.premium, 0).toFixed(4) + ' SUI'} />
         </div>

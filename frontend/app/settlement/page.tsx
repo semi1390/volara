@@ -266,15 +266,9 @@ export default function SettlementPage() {
             </div>
 
             {account ? (
-              <button
-                onClick={() => {
-                  toast.loading('Claiming settlement...')
-                  setTimeout(() => { toast.dismiss(); toast.success('Settlement claimed successfully!') }, 2000)
-                }}
-                className="w-full py-4 rounded-xl bg-primary text-white font-syne font-bold text-lg hover:shadow-glow-indigo transition-all min-h-[52px]"
-              >
-                Claim Settled Options
-              </button>
+          <div className="w-full py-4 rounded-xl bg-card border border-white/10 text-center font-mono text-sm text-text-secondary">
+  ✅ Settlement is automatic — keeper bot pays out directly to your wallet at expiry. No action needed.
+</div>
             ) : (
               <div className="space-y-3">
                 <p className="text-center text-text-secondary font-mono text-sm">Connect wallet to claim settlements</p>

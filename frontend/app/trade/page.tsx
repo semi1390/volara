@@ -191,6 +191,10 @@ const marketsWithPrices = MARKETS.map(m => {
   const handleBuy = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (totalPremium < 0.001) { toast.error('Premium too low — minimum 0.001 SUI'); return }
+    if (totalPremium > parseFloat(suiBalance)) {
+  toast.error(`Insufficient balance. Need ${totalPremium} SUI, have ${suiBalance} SUI`)
+  return
+}
 
     const tx = new Transaction()
     const premiumMist = Math.floor(totalPremium * 1_000_000_000)
