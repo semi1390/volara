@@ -155,16 +155,20 @@ tx.moveCall({
 })
     toast.loading('Depositing SUI into pool...')
     signAndExecute({ transaction: tx as any }, {
-      onSuccess: (result) => {
-        toast.dismiss()
-        if ((result as any).effects?.status?.status === 'failure') {
-          toast.error(`Deposit failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown'}`)
-          return
-        }
-        toast.success('Deposited successfully! 🎉')
-        setAmount('')
-        refetchPool()
-      },
+     onSuccess: async () => {
+  toast.dismiss()
+  await new Promise(r => setTimeout(r, 2000))
+  const newPool = await refetchPool()
+  const newBalance = parseInt(
+    (newPool?.data?.data?.content as any)?.fields?.balance ?? '0'
+  ) / 1_000_000_000
+  if (newBalance > realPoolBalance) {
+    toast.success('Deposited successfully! 🎉')
+    setAmount('')
+  } else {
+    toast.error('Transaction may have failed — check Suiscan')
+  }
+},
       onError: (e) => {
         toast.dismiss()
         const msg = e.message || ''
@@ -193,7 +197,7 @@ tx.moveCall({
       ],
     })
     toast.loading('Withdrawing SUI from pool...')
-   signAndExecute({ transaction: tx as any, options: { showEffects: true } }, {
+   signAndExecute({ transaction: tx as any }, {
       onSuccess: (result) => {
         toast.dismiss()
         if ((result as any).effects?.status?.status === 'failure') {
