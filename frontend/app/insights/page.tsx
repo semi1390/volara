@@ -2,17 +2,20 @@
 
 import { useState } from 'react'
 import { Brain, Zap, TrendingUp } from 'lucide-react'
-import { MARKETS } from '@/lib/dummy-data'
+ import { MARKETS, generateStrikes } from '@/lib/dummy-data'
 import { getOptionAdvisorInsight } from '@/lib/claude'
 import { cn } from '@/lib/utils'
 import { usePrices } from '@/hooks/usePrices'
 
 export default function InsightsPage() {
   const { prices } = usePrices()
-  const marketsWithPrices = MARKETS.map(m => ({
-    ...m,
-    price: m.id === 'sui-usdc' ? prices.sui.price : m.id === 'deep-usdc' ? prices.deep.price : prices.cetus.price,
-  }))
+ 
+
+const marketsWithPrices = MARKETS.map(m => {
+  const livePrice = m.id === 'sui-usdc' ? prices.sui.price : m.id === 'deep-usdc' ? prices.deep.price : prices.cetus.price
+  const price = livePrice > 0 ? livePrice : m.price
+  return { ...m, price, strikes: generateStrikes(price, 6) }
+})
   const [selectedMarketId, setSelectedMarketId] = useState(MARKETS[0].id)
   const selectedMarket = marketsWithPrices.find(m => m.id === selectedMarketId) || marketsWithPrices[0]
   const [optionType, setOptionType] = useState<'CALL' | 'PUT'>('CALL')
