@@ -143,7 +143,7 @@ export default function LiquidityPage() {
   const handleDeposit = () => {
     if (!account) { toast.error('Connect your wallet first!'); return }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return }
-    if (parseFloat(amount) > walletBalance) { toast.error(`Insufficient balance. You have ${walletBalance} SUI`); return }
+   if (parseFloat(amount) > walletBalance - 0.05) { toast.error(`Insufficient balance. You have ${walletBalance} SUI`); return }
 
     const tx = new Transaction()
     const amountMist = Math.floor(parseFloat(amount) * 1_000_000_000)
@@ -282,7 +282,9 @@ export default function LiquidityPage() {
                 <div className="flex gap-2 mt-2">
                   {['25%', '50%', '75%', 'MAX'].map(pct => (
                     <button key={pct} onClick={() => {
-                      const maxVal = activeTab === 'deposit' ? walletBalance * 0.95 : parseFloat(userDepositValue)
+                     const maxVal = activeTab === 'deposit'
+  ? Math.max(0, walletBalance - 0.05) // Leave fixed 0.05 SUI for gas
+  : parseFloat(userDepositValue)
                       const p = pct === 'MAX' ? 1 : parseInt(pct) / 100
                       setAmount((maxVal * p).toFixed(4))
                     }} className="flex-1 py-1.5 text-xs font-mono rounded-lg bg-white/5 text-text-secondary hover:bg-primary/15 hover:text-primary transition-all min-h-[32px]">
