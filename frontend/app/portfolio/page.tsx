@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Download, X, ChevronRight, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Download, X, ChevronRight, ExternalLink, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
@@ -11,13 +11,30 @@ import { usePositions } from '@/hooks/usePositions'
 import { useTransactionHistory } from '@/hooks/useTransactionHistory'
 import Link from 'next/link'
 
-function StatCard({ label, value, sub, positive }: { label: string; value: string; sub?: string; positive?: boolean }) {
+function StatCard({ label, value, sub, positive, delay = 0 }: {
+  label: string; value: string; sub?: string; positive?: boolean; delay?: number
+}) {
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setTimeout(() => setVisible(true), delay)
+    }, { threshold: 0.2 })
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [delay])
+
   return (
-    <div className="card p-4 md:p-5">
+    <div ref={ref} className={cn(
+      'card p-4 md:p-5 transition-all duration-700 hover:border-primary/20 hover:shadow-glow-indigo group',
+      visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+    )}>
       <div className="text-text-secondary text-xs font-mono mb-2 leading-tight">{label}</div>
-      <div className={cn('font-mono font-bold text-xl md:text-2xl break-all', positive === undefined ? 'text-white' : positive ? 'text-profit' : 'text-danger')}>
-        {value}
-      </div>
+      <div className={cn(
+        'font-mono font-bold text-xl md:text-2xl break-all transition-all group-hover:scale-105 origin-left',
+        positive === undefined ? 'text-white' : positive ? 'text-profit' : 'text-danger'
+      )}>{value}</div>
       {sub && <div className={cn('text-xs font-mono mt-1', positive ? 'text-profit' : 'text-danger')}>{sub}</div>}
     </div>
   )
@@ -30,16 +47,22 @@ export default function PortfolioPage() {
   const { transactions, isLoading: txLoading } = useTransactionHistory()
   const [activeTab, setActiveTab] = useState<'active' | 'expired' | 'transactions'>('active')
   const [selectedPosition, setSelectedPosition] = useState<any>(null)
+  const [headerVisible, setHeaderVisible] = useState(false)
+
+  useEffect(() => { setTimeout(() => setHeaderVisible(true), 100) }, [])
 
   if (!account) {
     return (
       <div className="pt-24 min-h-screen flex items-center justify-center">
-        <div className="text-center px-4">
+        <div className={cn(
+          'text-center px-4 transition-all duration-700',
+          headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        )}>
           <div className="text-6xl mb-6">🔗</div>
           <h2 className="font-syne font-bold text-3xl text-white mb-3">Connect your wallet</h2>
           <p className="text-text-secondary font-mono mb-8">to view portfolio analytics.</p>
           <Link href="/trade">
-            <button className="px-10 py-4 rounded-xl bg-primary text-white font-mono font-medium hover:shadow-glow-indigo transition-all text-lg">
+            <button className="px-10 py-4 rounded-xl bg-gradient-to-r from-primary to-violet-500 text-white font-mono font-medium hover:shadow-glow-indigo hover:scale-[1.02] transition-all text-lg">
               Start Trading
             </button>
           </Link>
@@ -49,19 +72,25 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="pt-20 md:pt-24 pb-12 min-h-screen">
+    <div className="pt-24 pb-12 min-h-screen">
       <div className="max-w-[1440px] mx-auto px-4 md:px-8">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-8 md:mb-10 gap-4">
+        <div className={cn(
+          'flex items-start justify-between mb-8 md:mb-10 gap-4 transition-all duration-700',
+          headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        )}>
           <div className="min-w-0">
-            <h1 className="font-syne font-extrabold text-4xl md:text-5xl text-white mb-2 md:mb-3">Portfolio</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <TrendingUp size={28} className="text-primary" />
+              <h1 className="font-syne font-extrabold text-4xl md:text-5xl text-white">Portfolio</h1>
+            </div>
             <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
               <div className="w-2 h-2 rounded-full bg-profit status-pulse flex-shrink-0" />
               <span className="truncate">{account.address.slice(0, 6)}...{account.address.slice(-4)} · Sui Testnet</span>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl border border-white/10 text-text-secondary font-mono text-sm hover:text-white hover:border-white/30 transition-all group flex-shrink-0">
+          <button className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl border border-white/10 text-text-secondary font-mono text-sm hover:text-white hover:border-primary/30 hover:bg-primary/5 transition-all group flex-shrink-0">
             <Download size={14} className="group-hover:animate-bounce" />
             <span className="hidden sm:inline">Export CSV</span>
           </button>
@@ -69,13 +98,12 @@ export default function PortfolioPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
-          <StatCard label="Portfolio Value" value={`${positions.reduce((sum, p) => sum + p.premium, 0).toFixed(4)} SUI`} />
-          <StatCard label="Total Positions Ever" value={`${positions.length}`} />
-          <StatCard label="Active Positions" value={`${positions.length}`} />
-          <StatCard label="Total Premiums Paid" value={positions.reduce((sum, p) => sum + p.premium, 0).toFixed(4) + ' SUI'} />
+          <StatCard label="Portfolio Value" value={`${positions.reduce((s, p) => s + p.premium, 0).toFixed(4)} SUI`} delay={0} />
+          <StatCard label="Total Positions" value={`${positions.length}`} delay={100} />
+          <StatCard label="Active Positions" value={`${positions.length}`} positive={positions.length > 0} delay={200} />
+          <StatCard label="Total Premiums Paid" value={`${positions.reduce((s, p) => s + p.premium, 0).toFixed(4)} SUI`} delay={300} />
         </div>
 
-        {/* Main content */}
         <div className="flex flex-col lg:grid lg:grid-cols-[1fr_340px] gap-6 md:gap-8">
           <div>
             {/* Tabs */}
@@ -86,27 +114,26 @@ export default function PortfolioPage() {
                   { key: 'expired', label: 'Expired' },
                   { key: 'transactions', label: 'Transactions' },
                 ].map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as any)}
+                  <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
                     className={cn(
                       'px-3 md:px-5 py-2 rounded-lg text-xs md:text-sm font-mono transition-all whitespace-nowrap flex-shrink-0 min-h-[36px]',
-                      activeTab === tab.key ? 'bg-primary text-white' : 'text-text-secondary hover:text-white'
-                    )}
-                  >
+                      activeTab === tab.key
+                        ? 'bg-gradient-to-r from-primary to-violet-500 text-white shadow-glow-indigo'
+                        : 'text-text-secondary hover:text-white hover:bg-white/5'
+                    )}>
                     {tab.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Active Positions Tab */}
+            {/* Active Positions */}
             {activeTab === 'active' && (
-              <div className="card overflow-hidden">
+              <div className="card overflow-hidden hover:border-primary/10 transition-all duration-300">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[600px]">
                     <thead>
-                      <tr className="border-b border-white/5">
+                      <tr className="border-b border-white/5 bg-card/50">
                         {['Market', 'Type', 'Strike', 'Expiry', 'Qty', 'Premium', 'Current Value', 'P&L', ''].map(h => (
                           <th key={h} className="px-3 md:px-4 py-3 text-left text-xs font-mono text-text-secondary whitespace-nowrap">{h}</th>
                         ))}
@@ -114,47 +141,44 @@ export default function PortfolioPage() {
                     </thead>
                     <tbody>
                       {positionsLoading ? (
-                        <>
-                          {[1, 2, 3].map(i => (
-                            <tr key={i} className="border-b border-white/5 animate-pulse">
-                              {Array(9).fill(0).map((_, j) => (
-                                <td key={j} className="px-4 py-3">
-                                  <div className="h-4 bg-white/10 rounded w-16" />
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </>
+                        [1, 2, 3].map(i => (
+                          <tr key={i} className="border-b border-white/5 animate-pulse">
+                            {Array(9).fill(0).map((_, j) => (
+                              <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded w-16" /></td>
+                            ))}
+                          </tr>
+                        ))
                       ) : positions.length === 0 ? (
                         <tr>
                           <td colSpan={9} className="px-4 py-16 text-center">
                             <div className="text-4xl mb-4">📊</div>
                             <div className="text-text-secondary font-mono text-sm mb-4">No active positions yet.</div>
                             <Link href="/trade">
-                              <button className="px-6 py-2.5 rounded-xl bg-primary text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
+                              <button className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-violet-500 text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
                                 Buy Your First Option →
                               </button>
                             </Link>
                           </td>
                         </tr>
-                      ) : positions.map(pos => (
-                        <tr
-                          key={pos.id}
-                          onClick={() => setSelectedPosition(pos)}
-                          className="border-b border-white/5 hover:bg-white/3 cursor-pointer transition-colors"
-                        >
+                      ) : positions.map((pos, i) => (
+                        <tr key={pos.id} onClick={() => setSelectedPosition(pos)}
+                          className={cn(
+                            'border-b border-white/5 cursor-pointer transition-all duration-200',
+                            'hover:bg-primary/5 hover:border-primary/10',
+                            selectedPosition?.id === pos.id && 'bg-primary/10 border-primary/20'
+                          )}>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-white whitespace-nowrap">{pos.market}</td>
                           <td className="px-3 md:px-4 py-3">
-                            <span className={cn('text-xs font-mono px-2 py-1 rounded whitespace-nowrap', pos.type === 'CALL' ? 'bg-profit/15 text-profit' : 'bg-danger/15 text-danger')}>
-                              {pos.type}
-                            </span>
+                            <span className={cn('text-xs font-mono px-2 py-1 rounded whitespace-nowrap font-bold',
+                              pos.type === 'CALL' ? 'bg-profit/15 text-profit' : 'bg-danger/15 text-danger'
+                            )}>{pos.type}</span>
                           </td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-white whitespace-nowrap">${pos.strike.toFixed(2)}</td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary whitespace-nowrap">{new Date(pos.expiry * 1000).toLocaleDateString()}</td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-white">{pos.quantity}</td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary whitespace-nowrap">{pos.premium.toFixed(4)}</td>
-                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-white">-</td>
-                          <td className="px-3 md:px-4 py-3"><div className="text-sm font-mono font-bold text-text-secondary">-</div></td>
+                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-white">—</td>
+                          <td className="px-3 md:px-4 py-3"><div className="text-sm font-mono font-bold text-text-secondary">—</div></td>
                           <td className="px-3 md:px-4 py-3"><ChevronRight size={14} className="text-text-secondary" /></td>
                         </tr>
                       ))}
@@ -164,13 +188,13 @@ export default function PortfolioPage() {
               </div>
             )}
 
-            {/* Transactions Tab */}
+            {/* Transactions */}
             {activeTab === 'transactions' && (
-              <div className="card overflow-hidden">
+              <div className="card overflow-hidden hover:border-primary/10 transition-all duration-300">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[560px]">
                     <thead>
-                      <tr className="border-b border-white/5">
+                      <tr className="border-b border-white/5 bg-card/50">
                         {['Date', 'Type', 'Market', 'Strike', 'Qty', 'Amount', 'Tx Hash'].map(h => (
                           <th key={h} className="px-3 md:px-4 py-3 text-left text-xs font-mono text-text-secondary whitespace-nowrap">{h}</th>
                         ))}
@@ -178,47 +202,39 @@ export default function PortfolioPage() {
                     </thead>
                     <tbody>
                       {txLoading ? (
-                        <>
-                          {[1, 2, 3].map(i => (
-                            <tr key={i} className="border-b border-white/5 animate-pulse">
-                              {Array(7).fill(0).map((_, j) => (
-                                <td key={j} className="px-4 py-3">
-                                  <div className="h-4 bg-white/10 rounded w-16" />
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </>
+                        [1, 2, 3].map(i => (
+                          <tr key={i} className="border-b border-white/5 animate-pulse">
+                            {Array(7).fill(0).map((_, j) => (
+                              <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded w-16" /></td>
+                            ))}
+                          </tr>
+                        ))
                       ) : transactions.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-16 text-center">
                             <div className="text-4xl mb-4">📝</div>
                             <div className="text-text-secondary font-mono text-sm mb-4">No transactions yet.</div>
                             <Link href="/trade">
-                              <button className="px-6 py-2.5 rounded-xl bg-primary text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
+                              <button className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-violet-500 text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
                                 Make Your First Trade →
                               </button>
                             </Link>
                           </td>
                         </tr>
                       ) : transactions.map(tx => (
-                        <tr key={tx.digest} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                        <tr key={tx.digest} className="border-b border-white/5 hover:bg-primary/5 transition-colors">
                           <td className="px-3 md:px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">{tx.timestamp}</td>
                           <td className="px-3 md:px-4 py-3 font-mono text-sm text-white whitespace-nowrap">{tx.type}</td>
-                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
-                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
-                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">-</td>
+                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">—</td>
+                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">—</td>
+                          <td className="px-3 md:px-4 py-3 font-mono text-sm text-text-secondary">—</td>
                           <td className={cn('px-3 md:px-4 py-3 font-mono text-sm font-bold whitespace-nowrap', tx.amount >= 0 ? 'text-profit' : 'text-danger')}>
                             {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(4)} SUI
                           </td>
                           <td className="px-3 md:px-4 py-3">
-                            <a
-                              href={`https://suiscan.xyz/testnet/tx/${tx.digest}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <a href={`https://suiscan.xyz/testnet/tx/${tx.digest}`} target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1 text-primary font-mono text-xs hover:underline whitespace-nowrap"
-                              onClick={e => e.stopPropagation()}
-                            >
+                              onClick={e => e.stopPropagation()}>
                               {tx.digest.slice(0, 8)}... <ExternalLink size={10} />
                             </a>
                           </td>
@@ -230,13 +246,13 @@ export default function PortfolioPage() {
               </div>
             )}
 
-            {/* Expired Tab */}
+            {/* Expired */}
             {activeTab === 'expired' && (
               <div className="text-center py-16">
                 <div className="text-4xl mb-4">📋</div>
                 <p className="text-text-secondary font-mono mb-4">No expired positions yet.</p>
                 <Link href="/settlement">
-                  <button className="px-6 py-2.5 rounded-xl border border-white/10 text-text-secondary font-mono text-sm hover:text-white hover:border-white/30 transition-all">
+                  <button className="px-6 py-2.5 rounded-xl border border-white/10 text-text-secondary font-mono text-sm hover:text-white hover:border-primary/30 transition-all">
                     View Settlement Page →
                   </button>
                 </Link>
@@ -246,19 +262,23 @@ export default function PortfolioPage() {
 
           {/* Position Detail Panel */}
           <div className={cn(
-            'card p-5 transition-all',
-            selectedPosition ? 'opacity-100' : 'opacity-50',
+            'card p-5 transition-all duration-300',
+            selectedPosition ? 'opacity-100 border-primary/20 shadow-glow-indigo' : 'opacity-50',
             !selectedPosition && 'hidden lg:block'
           )}>
             {selectedPosition ? (
               <>
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="font-syne font-bold text-white">Position Detail</h3>
-                  <button onClick={() => setSelectedPosition(null)} className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center">
+                  <button onClick={() => setSelectedPosition(null)}
+                    className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
                     <X size={14} />
                   </button>
                 </div>
-                <div className={cn('px-3 py-2 rounded-lg text-sm font-mono font-bold mb-5 inline-block', selectedPosition.type === 'CALL' ? 'bg-profit/15 text-profit' : 'bg-danger/15 text-danger')}>
+                <div className={cn(
+                  'px-3 py-2 rounded-lg text-sm font-mono font-bold mb-5 inline-block',
+                  selectedPosition.type === 'CALL' ? 'bg-profit/15 text-profit' : 'bg-danger/15 text-danger'
+                )}>
                   {selectedPosition.type} · ${selectedPosition.strike.toFixed(2)}
                 </div>
                 <div className="space-y-3 text-sm font-mono mb-6">
@@ -269,37 +289,34 @@ export default function PortfolioPage() {
                     ['Premium Paid', `${selectedPosition.premium.toFixed(4)} SUI`],
                     ['Object ID', selectedPosition.id.slice(0, 16) + '...'],
                   ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between gap-2">
+                    <div key={k} className="flex justify-between gap-2 py-1 border-b border-white/5">
                       <span className="text-text-secondary flex-shrink-0">{k}</span>
                       <span className="text-white text-right truncate">{v}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* View on Explorer */}
-                <a
-                  href={`https://suiscan.xyz/testnet/object/${selectedPosition.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-primary font-mono text-xs hover:underline mb-6"
-                >
+                <a href={`https://suiscan.xyz/testnet/object/${selectedPosition.id}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-primary font-mono text-xs hover:underline mb-6">
                   View on Suiscan <ExternalLink size={10} />
                 </a>
 
                 {/* Greeks */}
                 <div className="space-y-2 mb-6 text-xs font-mono">
                   <div className="text-text-secondary mb-2 font-semibold">GREEKS (estimated)</div>
-                  {[
-                    ['Delta', selectedPosition.type === 'CALL' ? '0.42' : '-0.38'],
-                    ['Gamma', '0.18'],
-                    ['Theta', '-0.032'],
-                    ['Vega', '0.241'],
-                  ].map(([g, v]) => (
-                    <div key={g} className="flex justify-between p-2 rounded-lg bg-background/50">
-                      <span className="text-text-secondary">{g}</span>
-                      <span className="text-white font-bold">{v}</span>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ['Delta', selectedPosition.type === 'CALL' ? '0.42' : '-0.38'],
+                      ['Gamma', '0.18'],
+                      ['Theta', '-0.032'],
+                      ['Vega', '0.241'],
+                    ].map(([g, v]) => (
+                      <div key={g} className="flex justify-between p-2 rounded-lg bg-background/50 border border-white/5 hover:border-primary/20 transition-colors">
+                        <span className="text-text-secondary">{g}</span>
+                        <span className="text-white font-bold">{v}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <button
@@ -311,26 +328,20 @@ export default function PortfolioPage() {
                       arguments: [tx.object(selectedPosition.id)],
                     })
                     toast.loading('Closing position...')
-                    signAndExecute(
-                      { transaction: tx as any },
-                      {
-                    onSuccess: (result) => {
-  toast.dismiss()
-  if ((result as any).effects?.status?.status === 'failure') {
-    toast.error(`Close failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown error'}`)
-    return
-  }
-  toast.success('Position closed!')
-  setSelectedPosition(null)
-},
-                        onError: (e) => {
-                          toast.dismiss()
-                          toast.error(`Failed: ${e.message}`)
-                        },
-                      }
-                    )
+                    signAndExecute({ transaction: tx as any }, {
+                      onSuccess: (result) => {
+                        toast.dismiss()
+                        if ((result as any).effects?.status?.status === 'failure') {
+                          toast.error(`Close failed: ${(result as any).effects?.status?.error?.slice(0, 80) ?? 'Unknown error'}`)
+                          return
+                        }
+                        toast.success('Position closed!')
+                        setSelectedPosition(null)
+                      },
+                      onError: (e) => { toast.dismiss(); toast.error(`Failed: ${e.message}`) },
+                    })
                   }}
-                  className="w-full py-3 rounded-xl border border-danger/30 text-danger font-mono text-sm hover:bg-danger/10 transition-all min-h-[44px]"
+                  className="w-full py-3 rounded-xl border border-danger/30 text-danger font-mono text-sm hover:bg-danger/10 hover:border-danger/50 transition-all min-h-[44px]"
                 >
                   Close Position
                 </button>
