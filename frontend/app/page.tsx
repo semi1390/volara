@@ -171,13 +171,13 @@ function TerminalAnimation({ price }: { price: number }) {
 }
 
 // Floating orb background element
-function FloatingOrb({ className }: { className: string }) {
-  return (
-    <div className={cn(
-      'absolute rounded-full blur-[120px] animate-float pointer-events-none',
-      className
-    )} />
-  )
+function FloatingOrb({ className, style }: { className: string; style?: React.CSSProperties }) {
+return (
+  <div
+    className={cn('absolute rounded-full blur-[120px] animate-float pointer-events-none', className)}
+    style={style}
+  />
+)
 }
 
 export default function LandingPage() {
