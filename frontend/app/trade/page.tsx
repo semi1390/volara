@@ -268,7 +268,7 @@ onSuccess: (result) => {
   }
 
   return (
-    <div className="pt-16 bg-background lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
+    <div className="pt-24 bg-background lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
       <div className="lg:flex-1 lg:grid lg:grid-cols-[260px_1fr_300px] lg:overflow-hidden flex flex-col">
 
         {/* MOBILE ORDER BOOK TOGGLE */}
@@ -406,7 +406,11 @@ onSuccess: (result) => {
                     {(['CALL', 'PUT'] as OptionType[]).map(type => (
                       <button key={type} onClick={() => setOptionType(type)}
                         className={cn('px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all min-h-[36px]',
-                          optionType === type ? type === 'CALL' ? 'pill-active-call' : 'pill-active-put' : 'text-text-secondary hover:text-white'
+                          optionType === type
+  ? type === 'CALL'
+    ? 'bg-gradient-to-r from-profit/80 to-profit text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+    : 'bg-gradient-to-r from-danger/80 to-danger text-white shadow-[0_0_12px_rgba(239,68,68,0.3)]'
+  : 'text-text-secondary hover:text-white'
                         )}>{type}</button>
                     ))}
                   </div>
@@ -425,7 +429,7 @@ onSuccess: (result) => {
                       {selectedMarket.strikes.slice(0, 6).map(strike => (
                         <button key={strike} onClick={() => setSelectedStrike(strike)}
                           className={cn('px-2 py-1.5 rounded-lg text-xs font-mono border transition-all flex-shrink-0 min-h-[36px]',
-                            selectedStrike === strike ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-text-secondary hover:border-white/30'
+                           selectedStrike === strike ? 'border-primary bg-primary/15 text-primary shadow-glow-indigo' : 'border-white/10 text-text-secondary hover:border-white/30 hover:text-white' 
                           )}>{strike.toFixed(2)}</button>
                       ))}
                     </div>
@@ -570,7 +574,7 @@ onSuccess: (result) => {
           <div className="p-3 border-b border-white/5 space-y-3">
             <AIAdvisorBox type={optionType} strike={selectedStrike} market={selectedMarket} expiryDays={selectedExpiry.daysLeft} />
             <button onClick={handleBuy}
-              className={cn('w-full py-3 rounded-xl font-syne font-bold text-white text-sm transition-all min-h-[48px]', optionType === 'CALL' ? 'btn-call' : 'btn-put')}>
+              className={cn('w-full py-3 rounded-xl font-syne font-bold text-white text-sm transition-all min-h-[48px] hover:scale-[1.02] active:scale-[0.98]', optionType === 'CALL' ? 'btn-call' : 'btn-put')}>
               Buy {quantity} {optionType} — {totalPremium} SUI
             </button>
             <div className="flex items-center justify-between text-xs font-mono text-text-secondary">
@@ -618,7 +622,7 @@ onSuccess: (result) => {
             ) : (
               <div className="space-y-2 px-2">
                 {positions.map(pos => (
-                  <div key={pos.id} className="bg-card border border-white/5 rounded-xl p-2.5">
+                  <div key={pos.id} className="bg-card border border-white/5 rounded-xl p-2.5 hover:border-primary/20 transition-all duration-200">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className={cn('text-xs font-mono font-bold px-1.5 py-0.5 rounded', pos.type === 'CALL' ? 'bg-profit/15 text-profit' : 'bg-danger/15 text-danger')}>{pos.type}</span>
