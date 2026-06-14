@@ -33,7 +33,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <Navbar />
             <main>{children}</main>
             <div className="fixed bottom-4 right-4 z-50 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-full text-yellow-400 font-mono text-xs">
-              ⚠️ Testnet — Experimental Software
+             🟡 Testnet — No Real Funds
             </div>
             <Toaster
               position="bottom-right"
