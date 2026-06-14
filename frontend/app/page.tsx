@@ -227,9 +227,9 @@ export default function LandingPage() {
               {/* Headline */}
               <div className={cn('transition-all duration-700 delay-100', heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6')}>
                 <h1 className="font-syne font-extrabold text-[clamp(2.5rem,8vw,5rem)] leading-[1.05] mb-5">
-                  <span className="gradient-text">Options trading,</span>
-                  <br />
-                  <span className="text-white">finally on Sui.</span>
+               <span className="gradient-text">Hedge smarter.</span>
+<br />
+<span className="text-white">Trade better.</span>
                 </h1>
               </div>
 
