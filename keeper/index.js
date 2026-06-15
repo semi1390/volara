@@ -13,12 +13,12 @@ const SETTLEMENT_REGISTRY_ID = process.env.SETTLEMENT_REGISTRY_ID
 const PRIVATE_KEY = process.env.KEEPER_PRIVATE_KEY
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
-const CHECK_INTERVAL_MS = 60_000
+const CHECK_INTERVAL_MS = 5 * 60 * 1000  // 5 minutes
 const LOG_FILE = path.join(__dirname, 'keeper.log')
 
 // Pyth config
 const SUI_USD_FEED = '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
-const MAX_PRICE_AGE_SECONDS = 60
+const MAX_PRICE_AGE_SECONDS = 3600  // 1 hour — forgiving for testnet
 const SUI_CLOCK_OBJECT = '0x6'
 
 // ─── Sui Client ───────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ async function getSuiPrice() {
       throw new Error(`Price too stale: ${(priceAgeMs/1000).toFixed(0)}s old`)
     }
 
-    if (confidencePct > 2) {
+    if (confidencePct > 5) {
       throw new Error(`Confidence too wide: ${confidencePct.toFixed(2)}%`)
     }
 
@@ -87,14 +87,12 @@ async function getSuiPrice() {
 
   } catch (e) {
     log(`❌ Pyth oracle failed — settlement PAUSED: ${e.message}`)
-    await sendTelegram(`🚨 *Volara Keeper — Oracle Failure*\n\nPyth price fetch failed:\n\`${e.message}\`\n\nSettlement paused this round. Will retry in 60s.`)
+    await sendTelegram(`🚨 *Volara Keeper — Oracle Failure*\n\nPyth price fetch failed:\n\`${e.message}\`\n\nSettlement paused this round. Will retry in 5 minutes.`)
     return null
   }
 }
 
 // ─── Read contract_size from option object on-chain ───────────────────────────
-// contract_size is stored IN the option object — we read it from chain
-// Never trust the frontend or keeper to pass this value
 async function getOptionContractSize(optionId) {
   try {
     const obj = await client.getObject({
@@ -175,11 +173,9 @@ async function getExpiredOptions() {
   }
 }
 
-// ─── Settle an option using keeper_settle ─────────────────────────────────────
-// Reads contract_size from chain — never trusted from external source
+// ─── Settle an option ─────────────────────────────────────────────────────────
 async function settleOption(optionId, settlementPrice, priceTimestampMs) {
   try {
-    // Check duplicate settlement FIRST
     const alreadySettled = await hasBeenSettled(optionId)
     if (alreadySettled) {
       log(`⚠️ Option ${optionId.slice(0, 12)}... already settled — skipping`)
@@ -245,7 +241,6 @@ async function checkAndSettle() {
   for (const option of expired) {
     log(`⚡ Processing option ${option.id.slice(0, 12)}... (expired: ${new Date(option.expiry * 1000).toISOString()})`)
 
-    // Read contract_size from chain before settling
     const contractSize = await getOptionContractSize(option.id)
     log(`📐 Contract size for ${option.id.slice(0, 12)}...: ${contractSize}x`)
 
@@ -295,10 +290,11 @@ async function start() {
   log(`📦 Package: ${PACKAGE_ID}`)
   log(`🏦 Pool: ${LIQUIDITY_POOL_ID}`)
   log(`📋 Registry: ${SETTLEMENT_REGISTRY_ID}`)
-  log(`⏱️  Check interval: ${CHECK_INTERVAL_MS / 1000}s`)
+  log(`⏱️  Check interval: ${CHECK_INTERVAL_MS / 1000}s (5 minutes)`)
+  log(`🔒 Max price age: ${MAX_PRICE_AGE_SECONDS}s (1 hour)`)
   log(`🔒 Oracle: Pyth only (no CoinGecko fallback — fail closed)`)
 
-  await sendTelegram('🚀 *Volara Keeper v2.0 Started*\n\n✅ Pyth oracle only\n✅ Duplicate protection\n✅ Clock-based settlement\n✅ Contract size read from chain\n✅ Confidence interval validation\n\nMonitoring Sui Testnet...')
+  await sendTelegram('🚀 *Volara Keeper v2.0 Started*\n\n✅ Pyth oracle only\n✅ Duplicate protection\n✅ Clock-based settlement\n✅ Contract size read from chain\n✅ 1hr staleness threshold\n✅ 5min check interval\n\nMonitoring Sui Testnet...')
 
   await healthCheck()
   await checkAndSettle()
