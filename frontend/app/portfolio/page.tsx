@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Download, X, ChevronRight, ExternalLink, TrendingUp } from 'lucide-react'
+import { Download, X, ChevronRight, ExternalLink, TrendingUp, Wallet, BarChart2, FileText, ClipboardList, MousePointer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
@@ -58,7 +58,9 @@ export default function PortfolioPage() {
           'text-center px-4 transition-all duration-700',
           headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         )}>
-          <div className="text-6xl mb-6">🔗</div>
+          <div className="flex justify-center mb-6">
+  <Wallet size={56} className="text-primary/40" />
+</div>
           <h2 className="font-syne font-bold text-3xl text-white mb-3">Connect your wallet</h2>
           <p className="text-text-secondary font-mono mb-8">to view portfolio analytics.</p>
           <Link href="/trade">
@@ -151,7 +153,9 @@ export default function PortfolioPage() {
                       ) : positions.length === 0 ? (
                         <tr>
                           <td colSpan={9} className="px-4 py-16 text-center">
-                            <div className="text-4xl mb-4">📊</div>
+                            <div className="flex justify-center mb-4">
+  <BarChart2 size={40} className="text-text-secondary/40" />
+</div>
                             <div className="text-text-secondary font-mono text-sm mb-4">No active positions yet.</div>
                             <Link href="/trade">
                               <button className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-violet-500 text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
@@ -212,7 +216,9 @@ export default function PortfolioPage() {
                       ) : transactions.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-16 text-center">
-                            <div className="text-4xl mb-4">📝</div>
+                            <div className="flex justify-center mb-4">
+  <FileText size={40} className="text-text-secondary/40" />
+</div>
                             <div className="text-text-secondary font-mono text-sm mb-4">No transactions yet.</div>
                             <Link href="/trade">
                               <button className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-violet-500 text-white font-mono text-sm hover:shadow-glow-indigo transition-all">
@@ -249,7 +255,9 @@ export default function PortfolioPage() {
             {/* Expired */}
             {activeTab === 'expired' && (
               <div className="text-center py-16">
-                <div className="text-4xl mb-4">📋</div>
+               <div className="flex justify-center mb-4">
+  <ClipboardList size={40} className="text-text-secondary/40" />
+</div>
                 <p className="text-text-secondary font-mono mb-4">No expired positions yet.</p>
                 <Link href="/settlement">
                   <button className="px-6 py-2.5 rounded-xl border border-white/10 text-text-secondary font-mono text-sm hover:text-white hover:border-primary/30 transition-all">
@@ -348,7 +356,9 @@ export default function PortfolioPage() {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center h-48 text-center">
-                <div className="text-3xl mb-3">👆</div>
+                <div className="flex justify-center mb-3">
+  <MousePointer size={28} className="text-text-secondary/40" />
+</div>
                 <p className="text-text-secondary font-mono text-sm">Click a position to see details</p>
               </div>
             )}

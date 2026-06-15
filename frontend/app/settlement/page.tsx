@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ExternalLink, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { ExternalLink, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react'
 import { EXPIRING_POSITIONS, SETTLEMENT_HISTORY } from '@/lib/dummy-data'
 import { getTimeUntilExpiry, cn } from '@/lib/utils'
 import { useCurrentAccount } from '@mysten/dapp-kit'
@@ -140,9 +140,11 @@ export default function SettlementPage() {
             {/* Expiring Positions */}
             <AnimatedCard delay={0}>
               <h2 className="font-syne font-bold text-xl md:text-2xl text-white mb-1">Positions Expiring This Week</h2>
-              <p className="text-yellow-400/70 font-mono text-xs mb-4">
-                ⚠️ Example positions — connect wallet to see your real positions
-              </p>
+             
+              <div className="flex items-center gap-1.5 text-yellow-400/70 font-mono text-xs mb-4">
+  <AlertTriangle size={12} className="text-yellow-400 flex-shrink-0" />
+  Example positions — connect wallet to see your real positions
+</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {expectedPayouts.map((pos, i) => {
                   const isITM = pos.calculatedPayout > 0
@@ -177,7 +179,7 @@ export default function SettlementPage() {
                           {isITM ? '+' : ''}{pos.calculatedPayout.toFixed(4)} SUI
                         </div>
                         <div className={cn('text-xs font-mono mt-1', isITM ? 'text-profit/70' : 'text-text-secondary/50')}>
-                          {isITM ? 'IN THE MONEY ✓' : 'OUT OF MONEY'}
+                          {isITM ? 'IN THE MONEY' : 'OUT OF MONEY'}
                         </div>
                       </div>
                     </div>
@@ -190,7 +192,11 @@ export default function SettlementPage() {
             <AnimatedCard delay={100}>
               <h2 className="font-syne font-bold text-xl md:text-2xl text-white mb-1">Settlement History</h2>
               <p className="text-yellow-400/70 font-mono text-xs mb-4">
-                ⚠️ Example data — real settlement history will appear here after options expire
+              <div className="flex items-center gap-1.5 text-yellow-400/70 font-mono text-xs mb-4">
+  <AlertTriangle size={12} className="text-yellow-400 flex-shrink-0" />
+   Example data — real settlement history will appear here after options expire
+</div>
+                
               </p>
               <div className="card overflow-hidden hover:border-primary/10 transition-all duration-300">
                 <div className="overflow-x-auto">
@@ -299,7 +305,10 @@ export default function SettlementPage() {
             <AnimatedCard delay={100}>
               {account ? (
                 <div className="w-full py-4 px-4 rounded-xl bg-profit/10 border border-profit/20 text-center font-mono text-sm text-profit">
-                  ✅ Settlement is automatic — keeper bot pays out directly to your wallet at expiry. No action needed.
+                  <div className="flex items-center gap-2">
+  <CheckCircle size={16} className="text-profit flex-shrink-0" />
+  <span>Settlement is automatic — keeper bot pays out directly to your wallet at expiry. No action needed.</span>
+</div>
                 </div>
               ) : (
                 <div className="space-y-3 card p-4">

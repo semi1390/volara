@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Brain, AlertCircle, TrendingUp } from 'lucide-react'
+import { Brain, AlertCircle, TrendingUp , AlertTriangle} from 'lucide-react'
 import { POOL_STATS } from '@/lib/dummy-data'
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClientQuery, useSuiClient } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
@@ -374,9 +374,10 @@ export default function LiquidityPage() {
                   ))}
                 </div>
               </div>
-              <div className="text-xs font-mono text-yellow-400/70 mb-4 flex items-center gap-1">
-                ⚠️ Projected data — based on protocol targets, not historical performance
-              </div>
+            <div className="text-xs font-mono text-yellow-400/70 mb-4 flex items-center gap-2">
+  <AlertTriangle size={12} className="text-yellow-400 flex-shrink-0" />
+  Projected data — based on protocol targets, not historical performance
+</div>
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={ANALYTICS_DATA} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>

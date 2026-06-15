@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePrices } from '@/hooks/usePrices'
-import { ArrowRight, Zap, Brain, ChevronRight, ChevronDown } from 'lucide-react'
+import { ArrowRight, Zap, Brain, ChevronRight, ChevronDown, Lock, Target, Lightbulb } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { PLATFORM_STATS, MARKETS, SPARKLINE_DATA } from '@/lib/dummy-data'
 
@@ -139,26 +139,47 @@ function Terminal({ price }: { price: number }) {
 
 // ── Countdown ──────────────────────────────────────────────────
 function MiniCountdown() {
-  const [time, setTime] = useState({ h: 0, m: 0, s: 0 })
+  const [time, setTime] = useState({ d: 0, h: 0, m: 0, s: 0 })
+
   useEffect(() => {
     const tick = () => {
       const now = new Date()
       const next = new Date()
-      next.setUTCDate(now.getUTCDate() + ((5 - now.getUTCDay() + 7) % 7 || 7))
+
+      // Find next Friday 12:00 UTC
+      const day = now.getUTCDay() // 0=Sun, 5=Fri
+      let daysUntilFriday = (5 - day + 7) % 7
+
+      // If today is Friday but past 12:00 UTC — jump to next Friday
+      if (daysUntilFriday === 0 && (now.getUTCHours() > 12 || (now.getUTCHours() === 12 && now.getUTCMinutes() > 0))) {
+        daysUntilFriday = 7
+      }
+
+      // If today is Friday before 12:00 UTC — settle today
+      next.setUTCDate(now.getUTCDate() + daysUntilFriday)
       next.setUTCHours(12, 0, 0, 0)
+
       const diff = Math.max(0, Math.floor((next.getTime() - now.getTime()) / 1000))
-      setTime({ h: Math.floor(diff / 3600) % 24, m: Math.floor(diff / 60) % 60, s: diff % 60 })
+      setTime({
+        d: Math.floor(diff / 86400),
+        h: Math.floor((diff % 86400) / 3600),
+        m: Math.floor((diff % 3600) / 60),
+        s: diff % 60,
+      })
     }
     tick()
     const t = setInterval(tick, 1000)
     return () => clearInterval(t)
   }, [])
+
   const pad = (n: number) => n.toString().padStart(2, '0')
   return (
     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-white/10">
       <div className="w-1.5 h-1.5 rounded-full bg-profit status-pulse" />
       <span className="text-text-secondary font-mono text-xs">Next settlement:</span>
-      <span className="text-white font-mono text-xs font-bold">{pad(time.h)}h {pad(time.m)}m {pad(time.s)}s</span>
+      <span className="text-white font-mono text-xs font-bold">
+        {time.d > 0 ? `${time.d}d ` : ''}{pad(time.h)}h {pad(time.m)}m {pad(time.s)}s
+      </span>
     </div>
   )
 }
@@ -257,12 +278,16 @@ export default function LandingPage() {
 
                 {/* Trust badges */}
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                  {[['🔒', 'Non-custodial'], ['⚡', 'Auto-settlement'], ['🧠', 'AI-powered pricing']].map(([icon, label]) => (
-                    <div key={label} className="flex items-center gap-1.5">
-                      <span className="text-sm">{icon}</span>
-                      <span className="text-text-secondary text-xs font-mono">{label}</span>
-                    </div>
-                  ))}
+{[
+  { icon: <Lock size={13} className="text-primary" />, label: 'Non-custodial' },
+  { icon: <Zap size={13} className="text-primary" />, label: 'Auto-settlement' },
+  { icon: <Brain size={13} className="text-primary" />, label: 'AI-powered pricing' },
+].map(({ icon, label }) => (
+  <div key={label} className="flex items-center gap-1.5">
+    {icon}
+    <span className="text-text-secondary text-xs font-mono">{label}</span>
+  </div>
+))}
                 </div>
               </div>
             </div>
@@ -427,13 +452,13 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
           <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-primary/20 via-primary/60 to-primary/20" />
           {[
-            { n: '01', icon: '🎯', title: 'Pick your position', desc: 'Choose CALL or PUT. Pick a strike from the live options chain. Select your expiry — weekly, every Friday.' },
-            { n: '02', icon: '🧠', title: 'See the AI analysis', desc: 'Before you buy, Volara AI shows you the probability of profit, your breakeven price, and a plain-English risk summary.' },
-            { n: '03', icon: '⚡', title: 'Settle automatically', desc: 'At expiry, settlement is automatic. No button to press, no claim to file. Payout goes straight to your wallet.' },
+           { n: '01', icon: <Target size={28} className="text-primary" />, title: 'Pick your position', desc: '...' },
+{ n: '02', icon: <Brain size={28} className="text-primary" />, title: 'See the AI analysis', desc: '...' },
+{ n: '03', icon: <Zap size={28} className="text-primary" />, title: 'Settle automatically', desc: '...' },
           ].map((item, i) => (
             <ScrollReveal key={item.n} delay={i * 130}>
               <div className="relative text-center md:text-left group">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center text-2xl md:text-3xl mx-auto md:mx-0 mb-4 group-hover:shadow-glow-indigo group-hover:scale-105 group-hover:bg-primary/18 transition-all duration-300">
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center mx-auto md:mx-0 mb-4 group-hover:shadow-glow-indigo group-hover:scale-105 group-hover:bg-primary/18 transition-all duration-300">
                   {item.icon}
                 </div>
                 <div className="font-mono text-primary text-xs mb-1.5">{item.n}</div>
@@ -449,7 +474,9 @@ export default function LandingPage() {
       <section className="py-14 md:py-20 bg-card/20 border-y border-white/5">
         <div className="max-w-[700px] mx-auto px-4 md:px-8 text-center">
           <ScrollReveal>
-            <div className="text-4xl mb-6">⚡</div>
+            <div className="flex justify-center mb-6">
+  <Zap size={40} className="text-primary" />
+</div>
             <blockquote className="font-syne font-bold text-2xl md:text-4xl text-white leading-tight mb-6">
               "Your position isn't a record in a database.<br />
               <span className="gradient-text">It's an object you own."</span>
@@ -490,7 +517,7 @@ export default function LandingPage() {
               ].map((item, i) => (
                 <div key={i} className="ai-box p-4 hover:border-primary/30 hover:shadow-glow-indigo transition-all duration-300">
                   <div className="flex items-start gap-3">
-                    <span className="text-base mt-0.5">💡</span>
+                    <Lightbulb size={16} className="text-primary flex-shrink-0 mt-0.5" />
                     <div>
                       <div className="text-white font-mono text-sm mb-1 leading-snug">{item.text}</div>
                       <div className="text-text-secondary font-mono text-xs">{item.detail}</div>

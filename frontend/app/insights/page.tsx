@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Brain } from 'lucide-react'
+import { Brain, AlertTriangle, BarChart2, Scale, Target } from 'lucide-react'
 import { MARKETS, generateStrikes } from '@/lib/dummy-data'
 import { getOptionAdvisorInsight } from '@/lib/claude'
 import { cn } from '@/lib/utils'
@@ -84,10 +84,10 @@ export default function InsightsPage() {
           <p className="text-text-secondary font-mono text-sm md:text-base mb-4">
             Get AI-powered options analysis from Volara AI. Enter your trade parameters below.
           </p>
-          <p className="flex items-center gap-2 text-yellow-400/70 font-mono text-xs mb-8 md:mb-10 bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-4 py-2.5">
-            <span>⚠️</span>
-            AI insights are informational only and not investment advice. Always do your own research.
-          </p>
+       <div className="flex items-center gap-2 text-yellow-400/70 font-mono text-xs mb-8 md:mb-10 bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-4 py-2.5">
+  <AlertTriangle size={12} className="text-yellow-400 flex-shrink-0" />
+  AI insights are informational only and not investment advice. Always do your own research.
+</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
@@ -257,16 +257,16 @@ export default function InsightsPage() {
                 <Brain size={48} className="text-primary/30 mb-4" />
                 <p className="text-text-secondary font-mono text-sm">Configure your trade parameters and click Analyze to get Volara AI's assessment.</p>
                 <div className="mt-6 grid grid-cols-3 gap-3 w-full">
-                  {[
-                    { label: 'Probability', icon: '📊' },
-                    { label: 'Breakeven', icon: '⚖️' },
-                    { label: 'Risk Level', icon: '🎯' },
-                  ].map(item => (
-                    <div key={item.label} className="bg-background/50 rounded-xl p-3 text-center border border-white/5">
-                      <div className="text-2xl mb-1">{item.icon}</div>
-                      <div className="text-text-secondary font-mono text-xs">{item.label}</div>
-                    </div>
-                  ))}
+            {[
+  { label: 'Probability', icon: <BarChart2 size={22} className="text-primary/40" /> },
+  { label: 'Breakeven', icon: <Scale size={22} className="text-primary/40" /> },
+  { label: 'Risk Level', icon: <Target size={22} className="text-primary/40" /> },
+].map(item => (
+  <div key={item.label} className="bg-background/50 rounded-xl p-3 text-center border border-white/5">
+    <div className="flex justify-center mb-1">{item.icon}</div>
+    <div className="text-text-secondary font-mono text-xs">{item.label}</div>
+  </div>
+))}
                 </div>
               </div>
             )}
