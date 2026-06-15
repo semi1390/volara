@@ -452,9 +452,9 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
           <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-primary/20 via-primary/60 to-primary/20" />
           {[
-           { n: '01', icon: <Target size={28} className="text-primary" />, title: 'Pick your position', desc: '...' },
-{ n: '02', icon: <Brain size={28} className="text-primary" />, title: 'See the AI analysis', desc: '...' },
-{ n: '03', icon: <Zap size={28} className="text-primary" />, title: 'Settle automatically', desc: '...' },
+          { n: '01', icon: <Target size={28} className="text-primary" />, title: 'Pick your position', desc: 'Choose CALL or PUT. Pick a strike from the live options chain. Select your expiry — weekly, every Friday.' },
+{ n: '02', icon: <Brain size={28} className="text-primary" />, title: 'See the AI analysis', desc: 'Before you buy, Volara AI shows you the probability of profit, your breakeven price, and a plain-English risk summary.' },
+{ n: '03', icon: <Zap size={28} className="text-primary" />, title: 'Settle automatically', desc: 'At expiry, settlement is automatic. No button to press, no claim to file. Payout goes straight to your wallet.' },
           ].map((item, i) => (
             <ScrollReveal key={item.n} delay={i * 130}>
               <div className="relative text-center md:text-left group">
@@ -641,15 +641,24 @@ export default function LandingPage() {
             </div>
             {[
               { title: 'Product', links: ['Markets', 'Trade', 'Liquidity', 'Portfolio', 'Settlement', 'AI Insights'] },
-              { title: 'Resources', links: ['Documentation', 'GitHub', 'Audit Report'] },
+              { title: 'Resources', links: [
+  { label: 'GitHub', href: 'https://github.com/semi1390/volara' },
+  { label: 'Audit Report', href: 'https://github.com/semi1390/volara/blob/main/AUDIT_REPORT.md' },
+]},
               { title: 'Legal', links: ['Terms', 'Privacy', 'Disclaimer'] },
             ].map(col => (
               <div key={col.title}>
                 <div className="font-syne font-semibold text-white mb-3 text-sm">{col.title}</div>
                 <ul className="space-y-2">
-                  {col.links.map(link => (
-                    <li key={link}><a href="#" className="text-text-secondary font-mono text-xs hover:text-white transition-colors">{link}</a></li>
-                  ))}
+               {col.links.map((link: any) => (
+  <li key={typeof link === 'string' ? link : link.label}>
+    <a href={typeof link === 'string' ? '#' : link.href}
+       target={typeof link === 'string' ? undefined : '_blank'}
+       className="text-text-secondary font-mono text-xs hover:text-white transition-colors">
+      {typeof link === 'string' ? link : link.label}
+    </a>
+  </li>
+))}
                 </ul>
               </div>
             ))}
