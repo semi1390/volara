@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://volara-gold.vercel.app/favicon.ico" width="64" height="64" />
+  <img src="https://volara-gold.vercel.app/favicon.svg" width="64" height="64" />
   
   # Volara
   ### Decentralized Options Trading on Sui
@@ -7,153 +7,169 @@
   **Hedge smarter. Trade better.**
   
   [![Live Demo](https://img.shields.io/badge/Live%20Demo-volara--gold.vercel.app-6366f1?style=for-the-badge)](https://volara-gold.vercel.app)
-  [![Sui Testnet](https://img.shields.io/badge/Sui-Testnet-4DA2FF?style=for-the-badge)](https://suiscan.xyz/testnet/account/0x343e6c91a00fa6208bfdffcd70899f90b904f5b664fc560baf90f2d861c69466)
+  [![Sui Testnet](https://img.shields.io/badge/Sui-Testnet-4DA2FF?style=for-the-badge)](https://suiscan.xyz/testnet/package/0xa59e822ec1a3350add1a32f5967289624f2a693d4265a610958413c7af5c5495)
   [![Built with Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge)](https://nextjs.org)
 </div>
 
 ---
 
-## 🎯 What is Volara?
+## What is Volara?
 
-Volara is a fully on-chain decentralized options protocol built on Sui. It allows users to buy CALL and PUT options on Sui ecosystem tokens (SUI, DEEP, CETUS) with:
+Volara is the first native options protocol on Sui. Users can buy CALL and PUT options on Sui ecosystem tokens — SUI, DEEP, and CETUS — with each position landing in their wallet as a real Move object, not a balance in a mapping.
 
-- **AI-powered pricing** via Claude (Volara AI) — real-time risk analysis, breakeven calculations, and probability estimates
-- **On-chain settlement** — options settle automatically at expiry using Pyth Network price feeds
-- **Deep liquidity pools** — LPs earn fees by providing liquidity to back option writers
-- **Institutional-grade UX** — TradingView charts, real order book, options chain view
+- **AI-powered analysis** — real-time probability estimates, breakeven calculations, and risk summaries before every trade
+- **Automated settlement** — options settle at expiry via Pyth Network oracle, no manual triggers, no admin keys
+- **Liquidity pool** — LPs deposit SUI, earn 100% of premiums, protected by a 70% utilization cap enforced on-chain
+- **Keeper bot** — runs every 5 minutes on Railway, hits the permissionless settle function at expiry
 
 ---
 
-## 🚀 Live Demo
+## Live Demo
 
 **→ [https://volara-gold.vercel.app](https://volara-gold.vercel.app)**
 
-Connect your Slush wallet (Sui Testnet) to trade live options on-chain.
+Connect your Slush wallet on Sui Testnet to trade live options on-chain.
 
 ---
 
-## 📸 Screenshots
-
-| Landing | Trade Terminal | Options Chain |
-|---------|---------------|---------------|
-| Hero with live prices | Full 3-panel terminal | Strike/bid/ask table |
-
-| Portfolio | Settlement | AI Insights |
-|-----------|-----------|-------------|
-| Real on-chain positions | Countdown + calculator | Claude-powered analysis |
-
----
-
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    Frontend (Next.js 14)              │
+│                  Frontend (Next.js 14)               │
 │  Landing │ Markets │ Trade │ Liquidity │ Portfolio   │
-│  Settlement │ AI Insights                             │
+│  Settlement │ AI Insights                            │
 └──────────────────────┬──────────────────────────────┘
                        │
         ┌──────────────┼──────────────┐
         │              │              │
-   ┌────▼────┐   ┌─────▼─────┐  ┌───▼────┐
-   │  Sui    │   │  Claude   │  │CoinGecko│
-   │Testnet  │   │   API     │  │  API   │
-   │(on-chain│   │(Volara AI)│  │(prices)│
-   └────┬────┘   └───────────┘  └────────┘
+   ┌────▼────┐   ┌─────▼─────┐  ┌───▼──────┐
+   │  Sui    │   │  Claude   │  │  Pyth    │
+   │Testnet  │   │    AI     │  │ Network  │
+   │(on-chain│   │ (analysis)│  │(oracle)  │
+   └────┬────┘   └───────────┘  └──────────┘
         │
    ┌────▼──────────────────────────┐
-   │     Move Smart Contracts       │
+   │     Move Smart Contracts      │
    │  liquidity_pool  │  options   │
    │  settlement      │  fees      │
    │  order_book                   │
    └───────────────────────────────┘
         │
-   ┌────▼────┐
-   │  Pyth   │
-   │ Oracle  │
-   │(prices) │
-   └─────────┘
+   ┌────▼──────┐
+   │  Keeper   │
+   │  Bot on   │
+   │  Railway  │
+   └───────────┘
 ```
 
 ---
 
-## 📦 Smart Contracts (Sui Testnet)
+## Smart Contracts (Sui Testnet — 3rd Deploy)
 
 | Contract | Object ID |
 |----------|-----------|
-| **Package** | `0x343e6c91a00fa6208bfdffcd70899f90b904f5b664fc560baf90f2d861c69466` |
-| **LiquidityPool** | `0xbbbe5bbf2363ec6b905e2b85704d13a006757451d397368ce5caafd2881d5e3c` |
-| **SettlementRegistry** | `0x62ab0d9d226079a3a29d571a247d63e949abfe8aa65afd20b12a74b8ac7c57e9` |
-| **OrderBook** | `0xf4d384adc7c41d3d0c202f54bca33ad38346ea1f832517cf3e700ea091bc79f4` |
-| **Treasury** | `0x0a43637a89072d6a660702fc92e1562321ef90ed786ade84363453316b1802df` |
+| **Package** | `0xa59e822ec1a3350add1a32f5967289624f2a693d4265a610958413c7af5c5495` |
+| **LiquidityPool** | `0x21d2c428375c91c987acc76d727eed920af6e0d82e6c118c3138f6d80bc262b9` |
+| **SettlementRegistry** | `0xe0cfc0130626ddea4d7b06cb18071a5ba65c00a0d72f2e7eb042f3b1abba870b` |
+| **OrderBook** | `0x244996f7478d8b34efc36fdc126a0e4da194eaed325bbe8dd1f89f100d7f2c6d` |
+| **Treasury** | `0x2caf95a14ef2d3f86e52c78466712e23d40c8e3f2b96075d2379cde0f35dce42` |
+| **AdminCap** | `0xa9e6f8f7387393190c4ede9248d463168b1e12e1e1e6cd0bd069b55c04e1bcdc` |
 
 ### Modules
-- `liquidity_pool.move` — LP deposits, withdrawals, share tracking
-- `options.move` — CALL/PUT option minting, buying, closing
-- `settlement.move` — Automatic settlement at expiry with Pyth oracle price
-- `fees.move` — 0.3% trade fee + 0.1% settlement fee
-- `order_book.move` — On-chain order placement and matching
+- `liquidity_pool.move` — LP deposits, withdrawals, share tracking, 70% utilization cap
+- `options.move` — CALL/PUT option minting with contract_size enforced on-chain
+- `settlement.move` — Automatic cash settlement via Pyth oracle at expiry
+- `fees.move` — Protocol fee collection
+- `order_book.move` — On-chain order placement
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎯 Trading
+### Trading
 - Buy CALL and PUT options on SUI/USDC, DEEP/USDC, CETUS/USDC
-- Real-time order book built around live CoinGecko prices
-- TradingView candlestick charts (real market data)
-- Options chain view — all strikes, bids, asks, and delta in one table
-- Slippage-protected execution via Sui PTBs
+- Black-Scholes pricing adjusted for real pool utilization
+- TradingView candlestick charts with live market data
+- Full options chain — all strikes, bids, asks, and delta
+- Contract size enforced on-chain per market
 
-### 🧠 Volara AI (Powered by Claude)
-- Real-time trade analysis with confidence scores
+### Volara AI
+- Real-time trade analysis powered by Claude
 - Probability of profit calculations
-- Breakeven price calculations
-- Risk level assessment (Low/Medium/High)
+- Breakeven price and risk assessment
 - Pool liquidity insights for LPs
+- Context-aware — reads live pool state and prices
 
-### 💰 Liquidity
-- Provide SUI liquidity to earn premiums
-- Real pool balance read from chain
-- Pool utilization tracking
-- AI-powered pool health insights
+### Liquidity
+- Deposit SUI to earn 100% of option premiums
+- Real pool balance read directly from chain
+- 70% utilization cap enforced on-chain
+- No lock period — withdraw anytime
 
-### 📊 Portfolio
+### Portfolio
 - Real positions fetched from wallet on-chain
 - Transaction history from Sui RPC
-- Position P&L tracking
-- CSV export
+- Greeks panel (Delta, Gamma, Theta, Vega)
+- One-click position close
 
-### ⏰ Settlement
+### Settlement
 - Countdown to next Friday 12:00 UTC settlement
 - Interactive payout calculator
-- One-click claim for ITM options
-- Settlement history
+- Fully automated — no claim needed
+- Settlement history on-chain
 
-### 🤖 Keeper Bot
-Automated settlement keeper that:
-- Monitors expired options every 60 seconds
-- Fetches price from Pyth Network
-- Triggers on-chain settlement automatically
-- Sends Telegram notifications
+### Keeper Bot
+- Checks every 5 minutes on Railway
+- Fetches price from Pyth Network (fail closed on stale data)
+- Triggers permissionless on-chain settlement
+- Telegram notifications for settlements and errors
+- Reads contract_size from chain — never trusted from external source
 
 ---
 
-## 🛠️ Tech Stack
+## Why Sui?
+
+On EVM chains, an options position is a number in a mapping — `balances[address][strikeId] += qty`. On Volara, each option is a native Move object with `has key, store`:
+
+```move
+public struct OptionPosition has key, store {
+    id: UID,
+    option_type: u8,
+    strike_price: u64,
+    expiry_timestamp: u64,
+    quantity: u64,
+    contract_size: u64,
+    premium_paid: u64,
+    market: vector<u8>,
+    is_settled: bool,
+}
+```
+
+This means:
+- **Real ownership** — the option lives at your address, verifiable on Suiscan
+- **Transferable** — send your position to any wallet natively
+- **Composable** — plug into any other Sui protocol
+- **Parallel execution** — multiple options settle simultaneously
+- **Sub-second finality** — instant settlement at expiry
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Blockchain | Sui Testnet (Move 2024) |
+| Blockchain | Sui Testnet (Move 2024.beta) |
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Wallet | @mysten/dapp-kit, Slush Wallet |
 | Charts | TradingView Widget |
-| Prices | CoinGecko API, Pyth Network |
+| Oracle | Pyth Network (Hermes Beta) |
 | AI | Anthropic Claude (claude-haiku-4-5) |
 | Deployment | Vercel (frontend), Railway (keeper) |
 
 ---
 
-## 🏃 Running Locally
+## Running Locally
 
 ### Prerequisites
 - Node.js 18+
@@ -166,11 +182,8 @@ Automated settlement keeper that:
 cd frontend
 npm install
 cp .env.example .env.local
-# Fill in your .env.local values
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000)
 
 ### Keeper Bot
 
@@ -178,77 +191,66 @@ Open [http://localhost:3000](http://localhost:3000)
 cd keeper
 npm install
 cp env.example .env
-# Fill in KEEPER_PRIVATE_KEY and TELEGRAM credentials
-npm start
+# Fill in KEEPER_PRIVATE_KEY and contract IDs
+node index.js
 ```
 
 ### Environment Variables
 
 ```env
 NEXT_PUBLIC_SUI_NETWORK=testnet
-NEXT_PUBLIC_PACKAGE_ID=0x343e...
-NEXT_PUBLIC_LIQUIDITY_POOL_ID=0xbbbe...
-NEXT_PUBLIC_SETTLEMENT_REGISTRY_ID=0x62ab...
-NEXT_PUBLIC_ORDER_BOOK_ID=0xf4d3...
-NEXT_PUBLIC_TREASURY_ID=0x0a43...
+NEXT_PUBLIC_PACKAGE_ID=0xa59e822ec1a3350add1a32f5967289624f2a693d4265a610958413c7af5c5495
+NEXT_PUBLIC_LIQUIDITY_POOL_ID=0x21d2c428375c91c987acc76d727eed920af6e0d82e6c118c3138f6d80bc262b9
+NEXT_PUBLIC_SETTLEMENT_REGISTRY_ID=0xe0cfc0130626ddea4d7b06cb18071a5ba65c00a0d72f2e7eb042f3b1abba870b
+NEXT_PUBLIC_ORDER_BOOK_ID=0x244996f7478d8b34efc36fdc126a0e4da194eaed325bbe8dd1f89f100d7f2c6d
+NEXT_PUBLIC_TREASURY_ID=0x2caf95a14ef2d3f86e52c78466712e23d40c8e3f2b96075d2379cde0f35dce42
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [x] Core options protocol on Sui Testnet
 - [x] AI-powered trade analysis
-- [x] Real-time order book
 - [x] TradingView charts
 - [x] Options chain view
 - [x] Automated keeper bot
 - [x] Pyth oracle integration
+- [x] Contract size enforced on-chain
+- [x] Security audit report
 - [ ] Mainnet deployment
-- [ ] More markets (WAL, NAVX)
-- [ ] Options chain Greeks (Delta, Gamma, Theta)
+- [ ] More markets (WAL, NAVX, NS)
+- [ ] Dynamic IV from Pyth
+- [ ] Insurance fund
 - [ ] WebSocket real-time updates
-- [ ] Mobile app
 
 ---
-## ⚡ Why Sui?
 
-Most options protocols store positions as account balance mappings.
-On Volara, each option is a native Move object in your wallet.
-
-This enables:
-- **Transferable positions** — send your option to anyone
-- **Object-native ownership** — no synthetic abstractions
-- **Parallel settlement** — multiple options settle simultaneously
-- **Composability** — options can be used in other protocols
-- **Sub-second finality** — instant settlement at expiry
-
-This is not possible on EVM chains without significant complexity.
-
----
-## 🏆 Sui Overflow Hackathon
+## Sui Overflow 2026
 
 Built for **Sui Overflow 2026** hackathon.
 
-**Track:** DeFi
+**Track:** DeFi & Payments
 
 **Key innovations:**
-1. First options protocol on Sui with AI-powered pricing
-2. Automated keeper bot for trustless settlement
-3. Options chain view with real bid/ask/delta
-4. Integrated Pyth oracle for manipulation-resistant prices
+1. First options protocol native to Sui
+2. Each option is a real Move object — not a synthetic balance
+3. Automated keeper with Pyth oracle — fully permissionless settlement
+4. AI-powered options analysis with live pool context
 
 ---
 
-## 📄 License
+## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
 <div align="center">
-  Built with ❤️ on Sui
-  
-  [Live Demo](https://volara-gold.vercel.app) · [GitHub](https://github.com/semi1390/volara) · [Sui Explorer](https://suiscan.xyz/testnet/account/0x343e6c91a00fa6208bfdffcd70899f90b904f5b664fc560baf90f2d861c69466)
+  Built on Sui · Sui Overflow 2026
+
+  <a href="https://volara-gold.vercel.app">Live Demo</a> ·
+  <a href="https://github.com/semi1390/volara">GitHub</a> ·
+  <a href="https://suiscan.xyz/testnet/package/0xa59e822ec1a3350add1a32f5967289624f2a693d4265a610958413c7af5c5495">Suiscan</a>
 </div>
