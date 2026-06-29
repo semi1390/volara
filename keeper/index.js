@@ -263,9 +263,9 @@ async function checkAndSettle() {
 
   log(`📊 Round complete — Settled: ${settled}, Skipped: ${skipped}, Failed: ${failed}`)
 
-  if (settled > 0 || failed > 0) {
-    await sendTelegram(`📊 *Volara Keeper Round Complete*\n\n✅ Settled: ${settled}\n⏭️ Skipped: ${skipped}\n❌ Failed: ${failed}\nPrice: $${price.toFixed(4)}`)
-  }
+  if (settled > 0) {
+    await sendTelegram(`📊 *Volara Keeper Round Complete*\n\n✅ Settled: ${settled}\n⏭️ Skipped: ${skipped}\nPrice: $${price.toFixed(4)}`)
+}
 }
 
 // ─── Health check ─────────────────────────────────────────────────────────────
